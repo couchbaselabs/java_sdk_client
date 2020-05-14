@@ -1,14 +1,3 @@
 #!/bin/bash
-echo hi
-java -jar /tmp/javaclient.jar -i $CLUSTER -b $BUCKET -s $SCOPE -c $COLLECTION -o $OP -n $N 
-#if var=$(java -jar /tmp/javaclient.jar -i $CLUSTER -b $BUCKET -s $SCOPE -c $COLLECTION -o $OP -n $N)
-#then
-#  echo "The program exited with success."
-#  echo "Here's what it said: $var"
-#else
-#  echo "The program failed with System.exit($?)"
-# echo "Look at the errors above. The failing output was: $var"
-#fi
+java -jar /tmp/javaclient.jar -i $CLUSTER -u $USERNAME -p $PASSWORD -b $BUCKET -s $SCOPE -c $COLLECTION -n $N -pc $PC -pu $PU -pd $PD -l $L -dsn $DSN -dpx $DPX -dt $DT -o $O
 
-#error=$(java -jar /tmp/javaclient.jar -i $CLUSTER -b $BUCKET -s $SCOPE -c $COLLECTION -o $OP -n $N 2>&1 1>&$out); } {out}>&1
-#echo error

@@ -1,13 +1,9 @@
 package com.couchbase.javaclient.reactive;
 
-import static com.couchbase.client.java.kv.MutateInSpec.insert;
-
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.UUID;
 
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.Collection;
@@ -38,6 +34,9 @@ public class DocDelete implements Callable<String> {
 
 	@Override
 	public String call() throws Exception {
+		if (ds.get_percent_delete() == 0) {
+			return "";
+		}
 		if (collection != null) {
 			deleteCollection(ds, collection);
 		} else {
@@ -74,7 +73,7 @@ public class DocDelete implements Callable<String> {
 		try {
 			docsToDelete.publishOn(Schedulers.elastic())
 					// .delayElements(Duration.ofMillis(5))
-					.flatMap(key -> rcollection.remove(key))
+					.flatMap(rcollection::remove)
 					// Num retries, first backoff, max backoff
 					.retryBackoff(10, Duration.ofMillis(100), Duration.ofMillis(1000))
 					// Block until last value, complete or timeout expiry

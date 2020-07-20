@@ -2,11 +2,7 @@ package com.couchbase.javaclient;
 
 import java.time.Duration;
 
-import com.couchbase.client.core.env.CompressionConfig;
 import com.couchbase.client.core.env.LoggerConfig;
-import com.couchbase.client.core.env.TimeoutConfig;
-import com.couchbase.client.core.env.IoConfig;
-import com.couchbase.client.core.env.CoreEnvironment.*;
 import com.couchbase.client.core.cnc.Event;
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.Cluster;

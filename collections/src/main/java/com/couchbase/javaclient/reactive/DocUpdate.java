@@ -48,9 +48,9 @@ public class DocUpdate implements Callable<String> {
 	@Override
 	public String call() throws Exception {
 		if (collection != null) {
-			updateCollection(ds, collection, fieldsToUpdate);
+			updateCollection(ds, collection);
 		} else {
-			updateBucketCollections(ds, bucket, fieldsToUpdate);
+			updateBucketCollections(ds, bucket);
 		}
 		// upsert to elastic
 		if (ds.isElasticSync() && !elasticMap.isEmpty()) {
@@ -61,7 +61,7 @@ public class DocUpdate implements Callable<String> {
 		return num_docs + " DOCS UPDATED!";
 	}
 
-	public void updateBucketCollections(DocSpec ds, Bucket bucket, List<String> fieldsToUpdate) {
+	public void updateBucketCollections(DocSpec ds, Bucket bucket) {
 		List<Collection> bucketCollections = new ArrayList<>();
 		List<ScopeSpec> bucketScopes = bucket.collections().getAllScopes();
 		for (ScopeSpec scope : bucketScopes) {
@@ -72,14 +72,14 @@ public class DocUpdate implements Callable<String> {
 				}
 			}
 		}
-		bucketCollections.parallelStream().forEach(c -> update(ds, c, fieldsToUpdate));
+		bucketCollections.parallelStream().forEach(c -> update(ds, c));
 	}
 
-	public void updateCollection(DocSpec ds, Collection collection, List<String> fieldsToUpdate) {
-		update(ds, collection, fieldsToUpdate);
+	public void updateCollection(DocSpec ds, Collection collection) {
+		update(ds, collection);
 	}
 
-	public void update(DocSpec ds, Collection collection, List<String> fieldsToUpdate) {
+	public void update(DocSpec ds, Collection collection) {
 		ReactiveCollection rcollection = collection.reactive();
 		num_docs = (int) (ds.get_num_ops() * ((float) ds.get_percent_update() / 100));
 		DocTemplate docTemplate = DocTemplateFactory.getDocTemplate(ds);
@@ -93,7 +93,7 @@ public class DocUpdate implements Callable<String> {
 		System.out.println("Started update..");
 		try {
 			docsToUpdate.publishOn(Schedulers.elastic())
-					.flatMap(key -> rcollection.upsert(key, getObject(key, docTemplate, elasticMap),
+					.flatMap(key -> rcollection.upsert(key, getObject(key, docTemplate, elasticMap, collection),
 							upsertOptions().expiry(Duration.ofSeconds(ds.get_expiry()))))
 					.log()
 					.buffer(1000)
@@ -108,7 +108,7 @@ public class DocUpdate implements Callable<String> {
 		System.out.println("Completed update");
 	}
 
-	private JsonObject getObject(String key, DocTemplate docTemplate, Map<String, String> elasticMap) {
+	private JsonObject getObject(String key, DocTemplate docTemplate, Map<String, String> elasticMap, Collection collection) {
 		JsonObject obj = docTemplate.updateJsonObject(collection.get(key).contentAsObject(), fieldsToUpdate);
 		elasticMap.put(key, obj.toString());
 		return obj;

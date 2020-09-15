@@ -92,7 +92,6 @@ public class DocOperations {
 		String lang = ns.getString("language");
 		String docTemplate = ns.getString("template");
 		String preparedDataFile = FileUtils.getDataFilePrepared(docTemplate, lang);
-		boolean elasticSync = ns.getBoolean("elastic_sync");
 		List<String> fieldsToUpdate = Arrays.asList(fieldsToUpdateStr.split(","));
 
 		ConnectionFactory connection = new ConnectionFactory(clusterName, username, password, bucketName, scopeName,

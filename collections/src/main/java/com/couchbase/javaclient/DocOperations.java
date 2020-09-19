@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinTask;
+import java.util.concurrent.TimeUnit;
 
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.Collection;
@@ -19,7 +20,6 @@ import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.Namespace;
-
 
 public class DocOperations {
 
@@ -48,6 +48,14 @@ public class DocOperations {
 				.help("uniform: load all collections with percent_create docs, "
 						+ "sparse: load all collections with maximum of percent_create docs"
 						+ "dense: load all collections with minimum of percent_create docs");
+		parser.addArgument("-sd", "--shuffle_docs").type(Boolean.class).setDefault(Boolean.FALSE)
+				.help("if true, shuffle docs, else operate sequentially");
+		parser.addArgument("-ac", "--all_collections").type(Boolean.class).setDefault(Boolean.FALSE)
+				.help("if true, all collections will be exercised");
+		parser.addArgument("-lf", "--loop_forever").type(Boolean.class).setDefault(Boolean.FALSE)
+				.help("if true, loop forever");
+		parser.addArgument("-li", "--loop_interval").type(Integer.class).setDefault(30)
+				.help("Sleep interval between loops in seconds");
 
 		// Doc params
 		parser.addArgument("-dsn", "--start_seq_num").type(Integer.class).setDefault(1)
@@ -57,19 +65,21 @@ public class DocOperations {
 		parser.addArgument("-dt", "--template").setDefault("Person").help("JSON document template");
 		parser.addArgument("-de", "--expiry").type(Integer.class).setDefault(0).help("Document expiry in seconds");
 		parser.addArgument("-ds", "--size").type(Integer.class).setDefault(500).help("Document size in bytes");
-		parser.addArgument("-st", "--start").type(Integer.class).setDefault(0).help("Starting documents operations index");
+		parser.addArgument("-st", "--start").type(Integer.class).setDefault(0)
+				.help("Starting documents operations index");
 		parser.addArgument("-en", "--end").type(Integer.class).setDefault(0).help("Ending documents operations index");
-		parser.addArgument("-fu", "--fields_to_update").type(String.class).setDefault("").help("Comma separated list of fields to update.");
-		parser.addArgument("-ac", "--all_collections").type(Boolean.class).setDefault(Boolean.FALSE).help("True: if all collections are to be exercised");
+		parser.addArgument("-fu", "--fields_to_update").type(String.class).setDefault("")
+				.help("Comma separated list of fields to update.");
 		parser.addArgument("-ln", "--language").type(String.class).setDefault("en").help("Locale for wiki datased");
-		parser.addArgument("-sd", "--shuffle_docs").type(Boolean.class).setDefault(Boolean.FALSE).help("if true, shuffle docs, else operate sequentially");
-		parser.addArgument("-es", "--elastic_sync").type(Boolean.class).setDefault(Boolean.FALSE).help("If true, then syncronize cb data with elastic bucket");
-
-
+		parser.addArgument("-es", "--elastic_sync").type(Boolean.class).setDefault(Boolean.FALSE)
+				.help("If true, then syncronize cb data with elastic bucket");
 		parser.addArgument("-es_host", "--elastic_host").type(String.class).setDefault("").help("Elastic instance IP");
-		parser.addArgument("-es_port", "--elastic_port").type(String.class).setDefault("").help("Elastic instance port");
-		parser.addArgument("-es_login", "--elastic_login").type(String.class).setDefault("").help("Elastic instance user login");
-		parser.addArgument("-es_password", "--elastic_password").type(String.class).setDefault("").help("Elastic instance password");
+		parser.addArgument("-es_port", "--elastic_port").type(String.class).setDefault("")
+				.help("Elastic instance port");
+		parser.addArgument("-es_login", "--elastic_login").type(String.class).setDefault("")
+				.help("Elastic instance user login");
+		parser.addArgument("-es_password", "--elastic_password").type(String.class).setDefault("")
+				.help("Elastic instance password");
 
 		try {
 			Namespace ns = parser.parseArgs(args);
@@ -79,7 +89,6 @@ public class DocOperations {
 		}
 	}
 
-
 	private static void run(Namespace ns) {
 		String clusterName = ns.getString("cluster");
 		String username = ns.getString("username");
@@ -87,7 +96,7 @@ public class DocOperations {
 		String bucketName = ns.getString("bucket");
 		String scopeName = ns.getString("scope");
 		String collectionName = ns.getString("collection");
-		
+
 		String fieldsToUpdateStr = ns.getString("fields_to_update");
 		String lang = ns.getString("language");
 		String docTemplate = ns.getString("template");
@@ -104,19 +113,42 @@ public class DocOperations {
 				.loadPattern(ns.getString("load_pattern")).startSeqNum(ns.getInt("start_seq_num"))
 				.prefix(ns.getString("prefix")).suffix(ns.getString("suffix")).template(ns.getString("template"))
 				.expiry(ns.getInt("expiry")).size(ns.getInt("size")).start(ns.getInt("start")).end(ns.getInt("end"))
-				.dataFile(preparedDataFile).shuffleDocs(ns.getBoolean("shuffle_docs")).setElasticSync(ns.getBoolean("elastic_sync"))
-				.setElasticIP(ns.getString("elastic_host")).setElasticPort(ns.getString("elastic_port"))
-				.setElasticLogin(ns.getString("elastic_login")).setElasticPassword(ns.getString("elastic_password"))
-				.buildDocSpec();
+				.dataFile(preparedDataFile).shuffleDocs(ns.getBoolean("shuffle_docs"))
+				.setElasticSync(ns.getBoolean("elastic_sync")).setElasticIP(ns.getString("elastic_host"))
+				.setElasticPort(ns.getString("elastic_port")).setElasticLogin(ns.getString("elastic_login"))
+				.setElasticPassword(ns.getString("elastic_password")).buildDocSpec();
 
+		if (ns.getBoolean("loop_forever")) {
+			while (true) {
+				try {
+					spawnTasks(dSpec, ns.getBoolean("all_collections"), bucket, fieldsToUpdate, collection);
+					TimeUnit.SECONDS.sleep(ns.getInt("loop_interval"));
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		} else {
+			try {
+				spawnTasks(dSpec, ns.getBoolean("all_collections"), bucket, fieldsToUpdate, collection);
+			} catch (Exception e) {
+				e.printStackTrace();
+				connection.close();
+				System.exit(1);
+			}
+		}
+		connection.close();
+		System.exit(0);
+	}
 
+	private static void spawnTasks(DocSpec dSpec, Boolean all_collections, Bucket bucket, List<String> fieldsToUpdate,
+			Collection collection) {
 		ForkJoinTask<String> create = null;
 		ForkJoinTask<String> update = null;
 		ForkJoinTask<String> delete = null;
 		ForkJoinTask<String> retrieve = null;
 		ForkJoinPool pool = new ForkJoinPool();
 
-		if(ns.getBoolean("all_collections")) {
+		if (all_collections) {
 			create = ForkJoinTask.adapt(new DocCreate(dSpec, bucket));
 			update = ForkJoinTask.adapt(new DocUpdate(dSpec, bucket, fieldsToUpdate));
 			delete = ForkJoinTask.adapt(new DocDelete(dSpec, bucket));
@@ -127,25 +159,17 @@ public class DocOperations {
 			delete = ForkJoinTask.adapt(new DocDelete(dSpec, collection));
 			retrieve = ForkJoinTask.adapt(new DocRetrieve(dSpec, collection));
 		}
-		try {
-			if(dSpec.get_percent_create() > 0) {
-				pool.invoke(create);
-			}
-			if(dSpec.get_percent_update() > 0) {
-				pool.invoke(update);
-			}
-			if(dSpec.get_percent_delete() > 0) {
-				pool.invoke(delete);
-			}
-			pool.invoke(retrieve);
-			pool.shutdownNow();
-		} catch (Exception e) {
-			e.printStackTrace();
-			connection.close();
-			System.exit(1);
+		if (dSpec.get_percent_create() > 0) {
+			pool.invoke(create);
 		}
-		connection.close();
-		System.exit(0);
+		if (dSpec.get_percent_update() > 0) {
+			pool.invoke(update);
+		}
+		if (dSpec.get_percent_delete() > 0) {
+			pool.invoke(delete);
+		}
+		pool.invoke(retrieve);
+		pool.shutdownNow();
 	}
 
 }

@@ -2,6 +2,7 @@ package com.couchbase.javaclient.doc;
 
 import com.couchbase.client.java.json.JsonObject;
 import com.github.javafaker.Faker;
+import org.apache.log4j.Logger;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
@@ -13,6 +14,7 @@ import java.util.List;
 
 public class TextDataSet implements DocTemplate {
 
+    private final static Logger log = Logger.getLogger(TextDataSet.class);
     private List<JsonObject> records = new ArrayList<>();
     private String dataSetName;
 
@@ -61,14 +63,13 @@ public class TextDataSet implements DocTemplate {
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e);
         }
         int i = 0;
         while (records.size() < numOps) {
             records.add(records.get(i++));
         }
-        System.out.println("Counter " + count);
-
+        log.info("Counter " + count);
     }
 
 }

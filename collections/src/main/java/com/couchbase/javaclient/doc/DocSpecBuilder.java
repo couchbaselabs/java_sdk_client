@@ -21,6 +21,7 @@ public class DocSpecBuilder {
 	String elasticPort;
 	String elasticLogin;
 	String elasticPassword;
+	boolean output;
 
 	public DocSpecBuilder() {
 	}
@@ -28,7 +29,7 @@ public class DocSpecBuilder {
 	public DocSpec buildDocSpec() {
 		return new DocSpec(_num_ops, _percent_create, _percent_update, _percent_delete, _load_pattern, _startSeqNum,
 				_prefix, _suffix, _template, _expiry, _size, _start, _end, _dataFile, _shuffleDocs, isElasticSync,
-				elasticIP, elasticPort, elasticLogin, elasticPassword);
+				elasticIP, elasticPort, elasticLogin, elasticPassword, output);
 	}
 
 	public DocSpecBuilder loadPattern(String _load_pattern) {
@@ -128,6 +129,11 @@ public class DocSpecBuilder {
 
 	public DocSpecBuilder setElasticPassword(String password){
 		this.elasticPassword = password;
+		return this;
+	}
+
+	public DocSpecBuilder setOutput(boolean output) {
+		this.output = output;
 		return this;
 	}
 }

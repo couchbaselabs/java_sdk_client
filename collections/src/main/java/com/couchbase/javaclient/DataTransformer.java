@@ -1,5 +1,6 @@
 package com.couchbase.javaclient;
 
+import org.apache.log4j.Logger;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
@@ -8,6 +9,7 @@ import java.io.*;
 
 public class DataTransformer {
 
+    private final static Logger log = Logger.getLogger(DataTransformer.class);
     private static JSONParser jsonParser = new JSONParser();
 
     public static String pyJsonToJavaJson(String inFile, String outFile, String dataSet) {
@@ -16,7 +18,7 @@ public class DataTransformer {
         try {
             writer = new PrintWriter(file, "UTF-8");
         } catch (FileNotFoundException | UnsupportedEncodingException e) {
-            e.printStackTrace();
+            log.warn(e);
         }
         int count = 0;
 
@@ -38,13 +40,12 @@ public class DataTransformer {
                 } catch (ParseException e) {
                     count++;
                 }
-                //  System.out.println(line);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e);
         }
         writer.close();
-        System.out.println("Count error transform = " + count);
+        log.info("Count error transform = " + count);
         return file.getAbsolutePath();
     }
 

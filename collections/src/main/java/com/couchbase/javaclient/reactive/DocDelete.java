@@ -17,15 +17,11 @@ import com.couchbase.client.java.manager.collection.ScopeSpec;
 import com.couchbase.javaclient.doc.DocSpec;
 
 import com.couchbase.javaclient.utils.FileUtils;
-import org.apache.log4j.Logger;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 public class DocDelete implements Callable<String> {
-
-	private final static Logger log = Logger.getLogger(DocDelete.class);
-
 	private DocSpec ds;
 	private Bucket bucket;
 	private Collection collection;
@@ -46,10 +42,8 @@ public class DocDelete implements Callable<String> {
 	@Override
 	public String call() throws Exception {
 		if (collection != null) {
-			log.info("Delete collection " + collection.bucketName() + "." + collection.scopeName() + "." + collection.name());
 			deleteCollection(ds, collection);
 		} else {
-			log.info("Delete bucket collections");
 			deleteBucketCollections(ds, bucket);
 		}
 		// delete from elastic
@@ -89,20 +83,21 @@ public class DocDelete implements Callable<String> {
 			java.util.Collections.shuffle(docs);
 			docsToDelete = Flux.fromIterable(docs);
 		}
+		System.out.println("Started delete..");
 		try {
 			docsToDelete.publishOn(Schedulers.elastic())
 					// .delayElements(Duration.ofMillis(5))
 					.flatMap(id -> wrap(rcollection, id, elasticMap))
-					//.log()
+					.log()
 					// Num retries, first backoff, max backoff
 					.retryBackoff(10, Duration.ofMillis(100), Duration.ofMillis(1000))
 					// Block until last value, complete or timeout expiry
 					.blockLast(Duration.ofMinutes(10));
 		} catch (Exception err) {
-			log.error(err);
+			err.printStackTrace();
 		}
 
-		log.info("Completed delete");
+		System.out.println("Completed delete");
 	}
 
 	private Mono<MutationResult> wrap(ReactiveCollection rcollection, String id, final Map<String, String> elasticMap) {

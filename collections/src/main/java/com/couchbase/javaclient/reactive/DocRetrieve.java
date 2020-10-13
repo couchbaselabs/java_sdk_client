@@ -14,14 +14,10 @@ import com.couchbase.client.java.manager.collection.ScopeSpec;
 import com.couchbase.javaclient.doc.DocSpec;
 import com.couchbase.javaclient.doc.Person;
 
-import org.apache.log4j.Logger;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 
 public class DocRetrieve implements Callable<String> {
-
-	private final static Logger log = Logger.getLogger(DocRetrieve.class);
-
 	private DocSpec ds;
 	private Bucket bucket;
 	private Collection collection;
@@ -41,10 +37,8 @@ public class DocRetrieve implements Callable<String> {
 	@Override
 	public String call() throws Exception {
 		if (collection != null) {
-			log.info("Retrieve collection " + collection.bucketName() + "." + collection.scopeName() + "." + collection.name());
 			printCollection(ds, collection);
 		} else {
-			log.info("Retrieve bucket collections");
 			printBucketCollections(ds, bucket);
 		}
 		done = true;
@@ -62,7 +56,7 @@ public class DocRetrieve implements Callable<String> {
 				}
 			}
 		}
-		log.info("Collections in " + bucket + ' ' + bucketCollections);
+		System.out.println("Collections in " + bucket + ' ' + bucketCollections);
 		bucketCollections.parallelStream().forEach(c -> printCollection(ds, c));
 	}
 
@@ -72,8 +66,8 @@ public class DocRetrieve implements Callable<String> {
 		int deleted_docs = (int) (ds.get_num_ops() * ((float) ds.get_percent_delete() / 100));
 		int expected_docs = created_docs - deleted_docs;
 
-		log.info("deleted docs " + deleted_docs);
-		log.info("expected docs " + expected_docs);
+		System.out.println("deleted docs " + deleted_docs);
+		System.out.println("expected docs " + expected_docs);
 
 		List<String> docsToDeleteList = new ArrayList<>();
 		String key = null;
@@ -84,7 +78,7 @@ public class DocRetrieve implements Callable<String> {
 				docsToDeleteList.add(key);
 			}
 		} catch (Exception e) {
-			log.error(key + " not found. Skipping delete");
+			System.out.println(key + " not found. Skipping delete");
 		}
 		Flux<String> docsToDelete = Flux.fromIterable(docsToDeleteList);
 		List<String> docsToFetchList = new ArrayList<>();
@@ -102,7 +96,7 @@ public class DocRetrieve implements Callable<String> {
 				.collectList()
 				// Block until last value, complete or timeout expiry
 				.block(Duration.ofMinutes(10));
-		log.info(
+		System.out.println(
 				expected_docs + " keys expected, " + actual_docs.size() + " keys present in collection");
 	}
 

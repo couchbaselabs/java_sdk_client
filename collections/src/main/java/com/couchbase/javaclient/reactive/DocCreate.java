@@ -9,20 +9,16 @@ import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.Collection;
 import com.couchbase.client.java.ReactiveCollection;
 import com.couchbase.client.java.json.JsonObject;
-import com.couchbase.client.java.kv.MutationResult;
 import com.couchbase.client.java.manager.collection.CollectionSpec;
 import com.couchbase.client.java.manager.collection.ScopeSpec;
 import com.couchbase.javaclient.doc.*;
 import com.couchbase.javaclient.utils.FileUtils;
 
-import org.apache.log4j.Logger;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 import static com.couchbase.client.java.kv.UpsertOptions.upsertOptions;
 
 public class DocCreate implements Callable<String> {
-
-	private final static Logger log = Logger.getLogger(DocCreate.class);
 	private DocSpec ds;
 	private Bucket bucket;
 	private Collection collection;
@@ -72,26 +68,21 @@ public class DocCreate implements Callable<String> {
 			docsToUpsert = Flux.fromIterable(docs);
 		}
 		DocTemplate docTemplate = DocTemplateFactory.getDocTemplate(ds);
+		System.out.println("Started upsert..");
 
 		try {
-			final List<MutationResult> results = docsToUpsert.publishOn(Schedulers.elastic())
+			docsToUpsert.publishOn(Schedulers.elastic())
 					.flatMap(key -> rcollection.upsert(key, getObject(key, docTemplate, elasticMap),
 							upsertOptions().expiry(Duration.ofSeconds(ds.get_expiry()))))
-					// .log()
-					.buffer(1000)
+					.log()
 					// Num retries, first backoff, max backoff
 					.retryBackoff(10, Duration.ofMillis(1000), Duration.ofMillis(10000))
 					// Block until last value, complete or timeout expiry
 					.blockLast(Duration.ofMinutes(10));
-			// print results
-			if (ds.isOutput()) {
-				System.out.println("Insert results");
-				FileUtils.printMutationResults(results, log);
-			}
-		} catch (Throwable err) {
-			log.error(err);
+		} catch (Exception err) {
+			err.printStackTrace();
 		}
-		log.info("Completed upsert");
+		System.out.println("Completed upsert");
 	}
 
 	private JsonObject getObject(String key, DocTemplate docTemplate, Map<String, String> elasticMap) {
@@ -103,10 +94,8 @@ public class DocCreate implements Callable<String> {
 	@Override
 	public String call() throws Error {
 		if (collection != null) {
-			log.info("Upsert collection " + collection.bucketName() + "." + collection.scopeName() + "." + collection.name());
 			upsertCollection(ds, collection);
 		} else {
-			log.info("Upsert bucket collections");
 			upsertBucketCollections(ds, bucket);
 		}
 		if (ds.isElasticSync() && !elasticMap.isEmpty()) {

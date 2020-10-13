@@ -2,27 +2,29 @@ package com.couchbase.javaclient;
 
 import java.time.Duration;
 
+//import com.couchbase.client.core.env.Logger;
+import java.util.logging.Level; 
+import java.util.logging.Logger;
+import java.util.logging.Handler;
+import java.util.logging.ConsoleHandler;
+
+import com.couchbase.client.core.env.LoggerConfig;
 import com.couchbase.client.core.cnc.Event;
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.Cluster;
 import com.couchbase.client.java.ClusterOptions;
 import com.couchbase.client.java.Collection;
 import com.couchbase.client.java.env.ClusterEnvironment;
-import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
 
 public class ConnectionFactory {
 
-	private final static Logger log = Logger.getLogger("com.couchbase.client");
-
-	private ClusterEnvironment environment;
-	private Cluster cluster;
-	private Bucket bucket;
-	private Collection collection;
+	ClusterEnvironment environment;
+	Cluster cluster;
+	Bucket bucket;
+	Collection collection;
 
 	public ConnectionFactory(String clusterName, String username, String password, String bucketName, String scopeName,
-			String collectionName, Level logLevel) {
-		log.setLevel(logLevel);
+			String collectionName) {
 		this.setCluster(connectCluster(clusterName, username, password));
 		this.setBucket(connectBucket(cluster, bucketName));
 		this.setCollection(connectCollection(bucket, scopeName, collectionName));
@@ -39,11 +41,20 @@ public class ConnectionFactory {
 	}
 
 	private Cluster connectCluster(String clusterName, String username, String password) {
+		Logger logger = Logger.getLogger("com.couchbase.client");
+        logger.setLevel(Level.SEVERE);
+        for(Handler h : logger.getParent().getHandlers()) {
+            if(h instanceof ConsoleHandler){
+                h.setLevel(Level.SEVERE);
+            }
+        }
 		try {
-			environment = ClusterEnvironment.builder().build();
+			environment = ClusterEnvironment.builder()
+					.loggerConfig(LoggerConfig.disableSlf4J(true))
+					.build();
 			environment.eventBus().subscribe(event -> {
 				if (event.severity() == Event.Severity.ERROR) {
-					log.error("Hit unrecoverable error..exiting \n" + event);
+					System.out.println("Hit unrecoverable error..exiting \n" + event);
 					System.exit(1);
 				}
 			});
@@ -104,7 +115,7 @@ public class ConnectionFactory {
 	}
 
 	public void handleException(String msg) {
-		log.error(msg);
+		System.out.println(msg);
 		this.close();
 		System.exit(1);
 	}

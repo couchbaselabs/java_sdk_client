@@ -1,16 +1,13 @@
 package com.couchbase.javaclient.utils;
 
-import com.couchbase.client.java.kv.MutationResult;
 import com.couchbase.javaclient.DataTransformer;
 import com.couchbase.javaclient.reactive.ElasticSync;
-import org.apache.log4j.Logger;
 
 import java.io.*;
 import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
-import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
@@ -134,19 +131,6 @@ public final class FileUtils {
         return f;
     }
 
-    public static void printMutationResults(List<MutationResult> results, Logger log) {
-        // print results
-        if (results == null) {
-            log.info("Empty results");
-            // we can't add new console appender on the fly without influence to file appender
-            System.out.println("Empty results");
-        } else {
-            for (MutationResult result : results) {
-                log.info(result);
-                // we can't add new console appender on the fly without influence to file appender
-                System.out.println(result);
-            }
-        }
-    }
+
 
 }

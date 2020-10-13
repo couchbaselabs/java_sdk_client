@@ -14,7 +14,6 @@ import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.Collection;
 import com.couchbase.client.java.ReactiveCollection;
 import com.couchbase.client.java.json.JsonObject;
-import com.couchbase.client.java.kv.MutationResult;
 import com.couchbase.client.java.manager.collection.CollectionSpec;
 import com.couchbase.client.java.manager.collection.ScopeSpec;
 import com.couchbase.javaclient.doc.DocSpec;
@@ -22,14 +21,10 @@ import com.couchbase.javaclient.utils.FileUtils;
 
 import com.couchbase.javaclient.doc.DocTemplate;
 import com.couchbase.javaclient.doc.DocTemplateFactory;
-import org.apache.log4j.Logger;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 
 public class DocUpdate implements Callable<String> {
-
-	private final static Logger log = Logger.getLogger(DocUpdate.class);
-
 	private DocSpec ds;
 	private Bucket bucket;
 	private Collection collection;
@@ -53,10 +48,8 @@ public class DocUpdate implements Callable<String> {
 	@Override
 	public String call() throws Exception {
 		if (collection != null) {
-			log.info("Update collection " + collection.bucketName() + "." + collection.scopeName() + "." + collection.name());
 			updateCollection(ds, collection);
 		} else {
-			log.info("Update bucket collections");
 			updateBucketCollections(ds, bucket);
 		}
 		// upsert to elastic
@@ -97,25 +90,22 @@ public class DocUpdate implements Callable<String> {
 			java.util.Collections.shuffle(docs);
 			docsToUpdate = Flux.fromIterable(docs);
 		}
+		System.out.println("Started update..");
 		try {
-            final List<MutationResult> results = docsToUpdate.publishOn(Schedulers.elastic())
+			docsToUpdate.publishOn(Schedulers.elastic())
 					.flatMap(key -> rcollection.upsert(key, getObject(key, docTemplate, elasticMap, collection),
 							upsertOptions().expiry(Duration.ofSeconds(ds.get_expiry()))))
-					//.log()
+					.log()
 					.buffer(1000)
 					// Num retries, first backoff, max backoff
 					.retryBackoff(10, Duration.ofMillis(1000), Duration.ofMillis(1000))
 					// Block until last value, complete or timeout expiry
 					.blockLast(Duration.ofMinutes(10));
-            // print results
-            if (ds.isOutput()) {
-				System.out.println("Update results");
-                FileUtils.printMutationResults(results, log);
-            }
-		} catch (Throwable err) {
-			log.error(err);
+
+		} catch (Exception err) {
+			err.printStackTrace();
 		}
-		log.info("Completed update");
+		System.out.println("Completed update");
 	}
 
 	private JsonObject getObject(String key, DocTemplate docTemplate, Map<String, String> elasticMap, Collection collection) {

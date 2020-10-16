@@ -23,12 +23,13 @@ public class DocSpec {
 	private String elasticPort;
 	private String elasticLogin;
 	private String elasticPassword;
+	private boolean output;
 	public static Faker faker = new Faker();
 
 	public DocSpec(int _num_ops, int _percent_create, int _percent_update, int _percent_delete, String _load_pattern,
 			int _startSeqNum, String _prefix, String _suffix, String _template, int _expiry, int _size, int _start,
 			int _end, String _dataFile, boolean _shuffle_docs, boolean isElasticSync, String elasticIP, String elasticPort,
-			String elasticLogin, String elasticPassword) {
+			String elasticLogin, String elasticPassword, boolean output) {
 
 		this._num_ops = _num_ops;
 		this._percent_create = _percent_create;
@@ -50,6 +51,7 @@ public class DocSpec {
 		this.setElasticPort(elasticPort);
 		this.setElasticLogin(elasticLogin);
 		this.setElasticPassword(elasticPassword);
+		this.output = output;
 	}
 
 	public int get_num_ops() {
@@ -191,4 +193,12 @@ public class DocSpec {
 	public String getElasticPassword() { return elasticPassword; }
 
 	public void setElasticPassword(String elasticPassword) { this.elasticPassword = elasticPassword; }
+
+	public boolean isOutput() {
+		return output;
+	}
+
+	public void setOutput(boolean output) {
+		this.output = output;
+	}
 }

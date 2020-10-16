@@ -5,6 +5,7 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.FileEntity;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
@@ -13,10 +14,11 @@ import java.util.Base64;
 
 public final class ElasticSync {
 
+    private final static Logger log = Logger.getLogger(ElasticSync.class);
     public static final String filePrefix = "/tmp/es_bulk_";
 
     public static void sync(String elasticInstanceIP, String elasticPort, String elasticLogin, String elasticPassword, File file, int retryCount) {
-        System.out.println("Started Elastic sync..");
+        log.info("Started Elastic sync..");
 
         HttpClient httpclient = HttpClients.createDefault();
         HttpPost httpPost = new HttpPost("http://" + elasticInstanceIP + ":" + elasticPort + "/_bulk");
@@ -32,8 +34,7 @@ public final class ElasticSync {
             int statusCode = response.getStatusLine().getStatusCode();
             if (statusCode < 200 || statusCode > 299) {
                 final String error = response.getStatusLine().getReasonPhrase();
-                // TODO: add error to logs
-                System.err.println("Elastic sync failed with code [" + statusCode + "] and error " + error);
+                log.error("Elastic sync failed with code [" + statusCode + "] and error " + error);
                 if (retryCount != 0) {
                     sync(elasticInstanceIP, elasticPort, elasticLogin, elasticPassword, file, retryCount - 1);
                 } else {
@@ -41,9 +42,9 @@ public final class ElasticSync {
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error(e);
         }
-        System.out.println("Completed Elastic sync..");
+        log.info("Completed Elastic sync..");
     }
 
     public static String createElasticObject(String dataset, String id, String operation) {

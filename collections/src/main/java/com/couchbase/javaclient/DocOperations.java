@@ -20,10 +20,15 @@ import net.sourceforge.argparse4j.ArgumentParsers;
 import net.sourceforge.argparse4j.inf.ArgumentParser;
 import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.Namespace;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 
 public class DocOperations {
 
+	private final static Logger log = Logger.getLogger(DocOperations.class);
+
 	public static void main(String[] args) {
+		log.info("Input args: " + Arrays.asList(args));
 		ArgumentParser parser = ArgumentParsers.newFor("Couchbase Java SDK Client For Collections").build()
 				.defaultHelp(true).description("Standalone SDK Client");
 		// Connection params
@@ -81,15 +86,28 @@ public class DocOperations {
 		parser.addArgument("-es_password", "--elastic_password").type(String.class).setDefault("")
 				.help("Elastic instance password");
 
+		// DEBUG < INFO < WARN < ERROR < FATAL < OFF
+		parser.addArgument("-log_level", "--log_level").type(String.class).setDefault("INFO").help("Log level. Levels can be: DEBUG < INFO < WARN < ERROR < FATAL < OFF");
+
+		parser.addArgument("-output", "--output").type(Boolean.class).setDefault(Boolean.FALSE)
+				.help("Output to console of upsert results");
+
 		try {
 			Namespace ns = parser.parseArgs(args);
 			run(ns);
 		} catch (ArgumentParserException e) {
+			log.error(e);
 			parser.handleError(e);
 		}
 	}
 
 	private static void run(Namespace ns) {
+		String logLevel = ns.getString("log_level");
+		try {
+			Logger.getRootLogger().setLevel(Level.toLevel(logLevel, Level.INFO));
+		} catch (Exception e) {
+			log.warn("Unknown log level [" + logLevel + "]. Use INFO by default.");
+		}
 		String clusterName = ns.getString("cluster");
 		String username = ns.getString("username");
 		String password = ns.getString("password");
@@ -104,7 +122,7 @@ public class DocOperations {
 		List<String> fieldsToUpdate = Arrays.asList(fieldsToUpdateStr.split(","));
 
 		ConnectionFactory connection = new ConnectionFactory(clusterName, username, password, bucketName, scopeName,
-				collectionName);
+				collectionName, Level.toLevel(logLevel, Level.INFO));
 		Bucket bucket = connection.getBucket();
 		Collection collection = connection.getCollection();
 
@@ -116,22 +134,23 @@ public class DocOperations {
 				.dataFile(preparedDataFile).shuffleDocs(ns.getBoolean("shuffle_docs"))
 				.setElasticSync(ns.getBoolean("elastic_sync")).setElasticIP(ns.getString("elastic_host"))
 				.setElasticPort(ns.getString("elastic_port")).setElasticLogin(ns.getString("elastic_login"))
-				.setElasticPassword(ns.getString("elastic_password")).buildDocSpec();
+				.setElasticPassword(ns.getString("elastic_password")).setOutput(ns.getBoolean("output")).buildDocSpec();
 
 		if (ns.getBoolean("loop_forever")) {
+			log.info("Loop forever");
 			while (true) {
 				try {
 					spawnTasks(dSpec, ns.getBoolean("all_collections"), bucket, fieldsToUpdate, collection);
 					TimeUnit.SECONDS.sleep(ns.getInt("loop_interval"));
 				} catch (Exception e) {
-					e.printStackTrace();
+					log.error(e);
 				}
 			}
 		} else {
 			try {
 				spawnTasks(dSpec, ns.getBoolean("all_collections"), bucket, fieldsToUpdate, collection);
 			} catch (Exception e) {
-				e.printStackTrace();
+				log.error(e);
 				connection.close();
 				System.exit(1);
 			}
@@ -160,12 +179,15 @@ public class DocOperations {
 			retrieve = ForkJoinTask.adapt(new DocRetrieve(dSpec, collection));
 		}
 		if (dSpec.get_percent_create() > 0) {
+			log.info("Invoke create");
 			pool.invoke(create);
 		}
 		if (dSpec.get_percent_update() > 0) {
+			log.info("Invoke update");
 			pool.invoke(update);
 		}
 		if (dSpec.get_percent_delete() > 0) {
+			log.info("Invoke delete");
 			pool.invoke(delete);
 		}
 		pool.invoke(retrieve);

@@ -5,3 +5,4 @@ collections/napa*
 collections/enwiki*
 collections/transformed-*
 collections/*.iml
+collections/java_sdk_loader.log

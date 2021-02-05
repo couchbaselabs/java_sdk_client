@@ -14,63 +14,62 @@ import java.util.List;
 
 public class TextDataSet implements DocTemplate {
 
-	private final static Logger log = Logger.getLogger(TextDataSet.class);
-	private List<JsonObject> records = new ArrayList<>();
-	private String dataSetName;
+    private final static Logger log = Logger.getLogger(TextDataSet.class);
+    private List<JsonObject> records = new ArrayList<>();
+    private String dataSetName;
 
-	TextDataSet(DocSpec docSpec) {
-		this.dataSetName = docSpec.get_template();
-		readFile(docSpec.getDataFile(), docSpec.get_num_ops());
-	}
+    TextDataSet(DocSpec docSpec) {
+        this.dataSetName = docSpec.get_template();
+        readFile(docSpec.getDataFile(), docSpec.get_num_ops());
+    }
 
-	protected void parseAndStoreJsonObject(org.json.simple.JSONObject simpleJson) {
-		String strSimpleJson = simpleJson.toJSONString();
-		com.couchbase.client.java.json.JsonObject cbJson = com.couchbase.client.java.json.JsonObject
-				.fromJson(strSimpleJson);
-		cbJson.put("type", dataSetName);
-		records.add(cbJson);
-	}
+    protected void parseAndStoreJsonObject(org.json.simple.JSONObject simpleJson){
+        String strSimpleJson = simpleJson.toJSONString();
+        com.couchbase.client.java.json.JsonObject cbJson = com.couchbase.client.java.json.JsonObject.fromJson(strSimpleJson);
+        cbJson.put("type", dataSetName);
+        records.add(cbJson);
+    }
 
-	@Override
-	public JsonObject createJsonObject(Faker faker, int docsize, int id) {
-		return records.get(id - 1);
-	}
+    @Override
+    public JsonObject createJsonObject(Faker faker, int docsize, int id) {
+        return records.get(id-1);
+    }
 
-	@Override
-	public JsonObject updateJsonObject(JsonObject obj, List<String> fieldsToUpdate) {
-		return obj;
-	}
+    @Override
+    public JsonObject updateJsonObject(JsonObject obj, List<String> fieldsToUpdate) {
+        return obj;
+    }
 
-	private void readFile(String path, int numOps) {
-		JSONParser jsonParser = new JSONParser();
+    private void readFile (String path, int numOps) {
+        JSONParser jsonParser = new JSONParser();
 
-		int count = 0;
-		try (BufferedReader br = new BufferedReader(new FileReader(path))) {
+        int count = 0;
+        try (BufferedReader br = new BufferedReader(new FileReader(path))) {
 
-			String line;
+            String line;
 
-			while ((line = br.readLine()) != null) {
+            while ((line = br.readLine()) != null) {
 
-				if (line.isEmpty())
-					break;
-				try {
-					Object obj = jsonParser.parse(line);
-					JSONObject json = (JSONObject) obj;
-					parseAndStoreJsonObject(json);
-				} catch (Exception e) {
-					count++;
-				}
-				if (records.size() > numOps) {
-					return;
-				}
-			}
-		} catch (IOException e) {
-			log.error(e);
-		}
-		int i = 0;
-		while (records.size() < numOps) {
-			records.add(records.get(i++));
-		}
-		log.info("Counter " + count);
-	}
+                if (line.isEmpty()) break;
+                try {
+                    Object obj = jsonParser.parse(line);
+                    JSONObject json = (JSONObject) obj;
+                    parseAndStoreJsonObject(json);
+                } catch (Exception e) {
+                    count++;
+                }
+                if (records.size() > numOps) {
+                    return;
+                }
+            }
+        } catch (IOException e) {
+            log.error(e);
+        }
+        int i = 0;
+        while (records.size() < numOps) {
+            records.add(records.get(i++));
+        }
+        log.info("Counter " + count);
+    }
+
 }

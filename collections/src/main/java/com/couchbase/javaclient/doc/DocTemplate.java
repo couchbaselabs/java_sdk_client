@@ -9,4 +9,5 @@ public interface DocTemplate {
 
 	JsonObject createJsonObject(Faker faker, int docsize, int id);
 	JsonObject updateJsonObject(JsonObject obj, List<String> fieldsToUpdate);
+
 }

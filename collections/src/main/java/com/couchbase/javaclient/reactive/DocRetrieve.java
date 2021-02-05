@@ -41,7 +41,8 @@ public class DocRetrieve implements Callable<String> {
 	@Override
 	public String call() throws Exception {
 		if (collection != null) {
-			log.info("Retrieve collection " + collection.bucketName() + "." + collection.scopeName() + "." + collection.name());
+			log.info("Retrieve collection " + collection.bucketName() + "." + collection.scopeName() + "."
+					+ collection.name());
 			printCollection(ds, collection);
 		} else {
 			log.info("Retrieve bucket collections");
@@ -93,17 +94,16 @@ public class DocRetrieve implements Callable<String> {
 			key = ds.get_prefix() + id + ds.get_suffix();
 			docsToFetchList.add(key);
 		}
-		if(ds.get_shuffle_docs()){
+		if (ds.get_shuffle_docs()) {
 			java.util.Collections.shuffle(docsToFetchList);
 		}
-		List<GetResult> actual_docs = Flux.fromIterable(docsToFetchList).flatMap(id -> rcollection.get(id))
-				// Num retries, first backoff, max backoff
-				.retryBackoff(20, Duration.ofMillis(1000), Duration.ofMillis(10000))
-				.collectList()
+
+		List<GetResult> actual_docs = Flux.fromIterable(docsToFetchList).flatMap(id -> rcollection.get(id).retry(20))
+				.buffer(1000)
 				// Block until last value, complete or timeout expiry
-				.block(Duration.ofMinutes(10));
-		log.info(
-				expected_docs + " keys expected, " + actual_docs.size() + " keys present in collection");
+				.blockLast(Duration.ofMinutes(10));
+
+		log.info(expected_docs + " keys expected, " + actual_docs.size() + " keys present in collection");
 	}
 
 	public boolean isDone() {

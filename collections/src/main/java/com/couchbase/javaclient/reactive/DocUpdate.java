@@ -13,15 +13,14 @@ import java.util.Map;
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.Collection;
 import com.couchbase.client.java.ReactiveCollection;
+import com.couchbase.client.java.codec.RawBinaryTranscoder;
 import com.couchbase.client.java.json.JsonObject;
 import com.couchbase.client.java.kv.MutationResult;
 import com.couchbase.client.java.manager.collection.CollectionSpec;
 import com.couchbase.client.java.manager.collection.ScopeSpec;
-import com.couchbase.javaclient.doc.DocSpec;
+import com.couchbase.javaclient.doc.*;
 import com.couchbase.javaclient.utils.FileUtils;
 
-import com.couchbase.javaclient.doc.DocTemplate;
-import com.couchbase.javaclient.doc.DocTemplateFactory;
 import org.apache.log4j.Logger;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
@@ -89,7 +88,6 @@ public class DocUpdate implements Callable<String> {
 	public void update(DocSpec ds, Collection collection) {
 		ReactiveCollection rcollection = collection.reactive();
 		num_docs = (int) (ds.get_num_ops() * ((float) ds.get_percent_update() / 100));
-		DocTemplate docTemplate = DocTemplateFactory.getDocTemplate(ds);
 		Flux<String> docsToUpdate = Flux.range(ds.get_startSeqNum(), num_docs)
 				.map(id -> ds.get_prefix() + id + ds.get_suffix());
 		if(ds.get_shuffle_docs()){
@@ -97,21 +95,33 @@ public class DocUpdate implements Callable<String> {
 			java.util.Collections.shuffle(docs);
 			docsToUpdate = Flux.fromIterable(docs);
 		}
+		List<MutationResult> results;	
 		try {
-            final List<MutationResult> results = docsToUpdate.publishOn(Schedulers.elastic())
-					.flatMap(key -> rcollection.upsert(key, getObject(key, docTemplate, elasticMap, collection),
-							upsertOptions().expiry(Duration.ofSeconds(ds.get_expiry()))))
-					//.log()
-					.buffer(1000)
-					// Num retries, first backoff, max backoff
-					.retryBackoff(10, Duration.ofMillis(1000), Duration.ofMillis(1000))
-					// Block until last value, complete or timeout expiry
-					.blockLast(Duration.ofMinutes(10));
-            // print results
-            if (ds.isOutput()) {
+			if ("Binary".equals(ds.get_template())) {
+				results = docsToUpdate.publishOn(Schedulers.elastic())
+						.flatMap(
+								key -> rcollection.upsert(key, new Binary().createBinaryObject(ds.faker, ds.get_size()),
+										upsertOptions().transcoder(RawBinaryTranscoder.INSTANCE)
+												.expiry(Duration.ofSeconds(ds.get_expiry()))))
+						.buffer(1000)
+						.retry(20)
+						.blockLast(Duration.ofMinutes(10));
+			} else {
+				DocTemplate docTemplate = DocTemplateFactory.getDocTemplate(ds);
+				results = docsToUpdate.publishOn(Schedulers.elastic())
+						.flatMap(key -> rcollection.upsert(key, getObject(key, docTemplate, elasticMap, collection),
+								upsertOptions().expiry(Duration.ofSeconds(ds.get_expiry()))))
+						.buffer(1000)
+						// Num retries
+						.retry(20)
+						// Block until last value, complete or timeout expiry
+						.blockLast(Duration.ofMinutes(10));
+			}
+			// print results
+			if (ds.isOutput()) {
 				System.out.println("Update results");
-                FileUtils.printMutationResults(results, log);
-            }
+				FileUtils.printMutationResults(results, log);
+			}
 		} catch (Throwable err) {
 			log.error(err);
 		}

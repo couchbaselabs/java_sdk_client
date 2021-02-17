@@ -8,10 +8,12 @@ import java.util.concurrent.Callable;
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.Collection;
 import com.couchbase.client.java.ReactiveCollection;
+import com.couchbase.client.java.codec.RawBinaryTranscoder;
 import com.couchbase.client.java.json.JsonObject;
 import com.couchbase.client.java.kv.MutationResult;
 import com.couchbase.client.java.manager.collection.CollectionSpec;
 import com.couchbase.client.java.manager.collection.ScopeSpec;
+
 import com.couchbase.javaclient.doc.*;
 import com.couchbase.javaclient.utils.FileUtils;
 
@@ -71,18 +73,28 @@ public class DocCreate implements Callable<String> {
 			java.util.Collections.shuffle(docs);
 			docsToUpsert = Flux.fromIterable(docs);
 		}
-		DocTemplate docTemplate = DocTemplateFactory.getDocTemplate(ds);
-
+		List<MutationResult> results;
 		try {
-			final List<MutationResult> results = docsToUpsert.publishOn(Schedulers.elastic())
-					.flatMap(key -> rcollection.upsert(key, getObject(key, docTemplate, elasticMap),
-							upsertOptions().expiry(Duration.ofSeconds(ds.get_expiry()))))
-					// .log()
-					.buffer(1000)
-					// Num retries, first backoff, max backoff
-					.retryBackoff(10, Duration.ofMillis(1000), Duration.ofMillis(10000))
-					// Block until last value, complete or timeout expiry
-					.blockLast(Duration.ofMinutes(10));
+			if ("Binary".equals(ds.get_template())) {
+				results = docsToUpsert.publishOn(Schedulers.elastic())
+						.flatMap(
+								key -> rcollection.upsert(key, new Binary().createBinaryObject(ds.faker, ds.get_size()),
+										upsertOptions().transcoder(RawBinaryTranscoder.INSTANCE)
+												.expiry(Duration.ofSeconds(ds.get_expiry()))))
+						.buffer(1000)
+						.retry(20)
+						.blockLast(Duration.ofMinutes(10));
+			} else {
+				DocTemplate docTemplate = DocTemplateFactory.getDocTemplate(ds);
+				results = docsToUpsert.publishOn(Schedulers.elastic())
+						.flatMap(key -> rcollection.upsert(key, getObject(key, docTemplate, elasticMap),
+								upsertOptions().expiry(Duration.ofSeconds(ds.get_expiry()))))
+						.buffer(1000)
+						// Num retries
+						.retry(20)
+						// Block until last value, complete or timeout expiry
+						.blockLast(Duration.ofMinutes(10));
+			}
 			// print results
 			if (ds.isOutput()) {
 				System.out.println("Insert results");

@@ -94,8 +94,8 @@ public class DocDelete implements Callable<String> {
 					// .delayElements(Duration.ofMillis(5))
 					.flatMap(id -> wrap(rcollection, id, elasticMap))
 					//.log()
-					// Num retries, first backoff, max backoff
-					.retryBackoff(10, Duration.ofMillis(100), Duration.ofMillis(1000))
+					// Num retries
+					.retry(20)
 					// Block until last value, complete or timeout expiry
 					.blockLast(Duration.ofMinutes(10));
 		} catch (Exception err) {

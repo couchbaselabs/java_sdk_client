@@ -49,10 +49,8 @@ public class DocOperations {
 				.help("Percentage of deletes out of num_ops");
 		parser.addArgument("-pr", "--percent_read").type(Integer.class).setDefault(0)
 				.help("Percentage of reads out of num_ops");
-		parser.addArgument("-l", "--load_pattern").choices("uniform", "sparse", "dense").setDefault("uniform")
-				.help("uniform: load all collections with percent_create docs, "
-						+ "sparse: load all collections with maximum of percent_create docs"
-						+ "dense: load all collections with minimum of percent_create docs");
+		parser.addArgument("-nt", "--num_threads").type(Integer.class).setDefault(4)
+				.help("Max number of threads per operation type");
 		parser.addArgument("-sd", "--shuffle_docs").type(Boolean.class).setDefault(Boolean.FALSE)
 				.help("if true, shuffle docs, else operate sequentially");
 		parser.addArgument("-ac", "--all_collections").type(Boolean.class).setDefault(Boolean.FALSE)
@@ -128,19 +126,19 @@ public class DocOperations {
 
 		DocSpec dSpec = new DocSpecBuilder().numOps(ns.getInt("num_ops")).percentCreate(ns.getInt("percent_create"))
 				.percentUpdate(ns.getInt("percent_update")).percentDelete(ns.getInt("percent_delete"))
-				.loadPattern(ns.getString("load_pattern")).startSeqNum(ns.getInt("start_seq_num"))
-				.prefix(ns.getString("prefix")).suffix(ns.getString("suffix")).template(ns.getString("template"))
+				.startSeqNum(ns.getInt("start_seq_num")).prefix(ns.getString("prefix")).suffix(ns.getString("suffix")).template(ns.getString("template"))
 				.expiry(ns.getInt("expiry")).size(ns.getInt("size")).start(ns.getInt("start")).end(ns.getInt("end"))
 				.dataFile(preparedDataFile).shuffleDocs(ns.getBoolean("shuffle_docs"))
 				.setElasticSync(ns.getBoolean("elastic_sync")).setElasticIP(ns.getString("elastic_host"))
 				.setElasticPort(ns.getString("elastic_port")).setElasticLogin(ns.getString("elastic_login"))
-				.setElasticPassword(ns.getString("elastic_password")).setOutput(ns.getBoolean("output")).buildDocSpec();
+				.setElasticPassword(ns.getString("elastic_password")).setOutput(ns.getBoolean("output"))
+				.fieldsToUpdate(fieldsToUpdate).buildDocSpec();
 
 		if (ns.getBoolean("loop_forever")) {
 			log.info("Loop forever");
 			while (true) {
 				try {
-					spawnTasks(dSpec, ns.getBoolean("all_collections"), bucket, fieldsToUpdate, collection);
+					spawnTasks(dSpec, ns.getBoolean("all_collections"), bucket, collection, ns.getInt("num_threads"));
 					TimeUnit.SECONDS.sleep(ns.getInt("loop_interval"));
 				} catch (Exception e) {
 					log.error(e);
@@ -148,7 +146,7 @@ public class DocOperations {
 			}
 		} else {
 			try {
-				spawnTasks(dSpec, ns.getBoolean("all_collections"), bucket, fieldsToUpdate, collection);
+				spawnTasks(dSpec, ns.getBoolean("all_collections"), bucket, collection, ns.getInt("num_threads"));
 			} catch (Exception e) {
 				log.error(e);
 				connection.close();
@@ -159,8 +157,8 @@ public class DocOperations {
 		System.exit(0);
 	}
 
-	private static void spawnTasks(DocSpec dSpec, Boolean all_collections, Bucket bucket, List<String> fieldsToUpdate,
-			Collection collection) {
+	private static void spawnTasks(DocSpec dSpec, Boolean all_collections, 
+			Bucket bucket, Collection collection, int nThreads) {
 		ForkJoinTask<String> create = null;
 		ForkJoinTask<String> update = null;
 		ForkJoinTask<String> delete = null;
@@ -168,15 +166,15 @@ public class DocOperations {
 		ForkJoinPool pool = new ForkJoinPool();
 
 		if (all_collections) {
-			create = ForkJoinTask.adapt(new DocCreate(dSpec, bucket));
-			update = ForkJoinTask.adapt(new DocUpdate(dSpec, bucket, fieldsToUpdate));
-			delete = ForkJoinTask.adapt(new DocDelete(dSpec, bucket));
-			retrieve = ForkJoinTask.adapt(new DocRetrieve(dSpec, bucket));
+			create = ForkJoinTask.adapt(new DocCreate(dSpec, bucket, nThreads));
+			update = ForkJoinTask.adapt(new DocUpdate(dSpec, bucket, nThreads));
+			delete = ForkJoinTask.adapt(new DocDelete(dSpec, bucket, nThreads));
+			retrieve = ForkJoinTask.adapt(new DocRetrieve(dSpec, bucket, nThreads));
 		} else {
-			create = ForkJoinTask.adapt(new DocCreate(dSpec, collection));
-			update = ForkJoinTask.adapt(new DocUpdate(dSpec, collection, fieldsToUpdate));
-			delete = ForkJoinTask.adapt(new DocDelete(dSpec, collection));
-			retrieve = ForkJoinTask.adapt(new DocRetrieve(dSpec, collection));
+			create = ForkJoinTask.adapt(new DocCreate(dSpec, collection, nThreads));
+			update = ForkJoinTask.adapt(new DocUpdate(dSpec, collection, nThreads));
+			delete = ForkJoinTask.adapt(new DocDelete(dSpec, collection, nThreads));
+			retrieve = ForkJoinTask.adapt(new DocRetrieve(dSpec, collection, nThreads));
 		}
 		if (dSpec.get_percent_create() > 0) {
 			log.info("Invoke create");

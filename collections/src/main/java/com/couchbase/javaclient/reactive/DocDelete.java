@@ -26,31 +26,34 @@ public class DocDelete implements Callable<String> {
 
 	private final static Logger log = Logger.getLogger(DocDelete.class);
 
-	private DocSpec ds;
-	private Bucket bucket;
-	private Collection collection;
+	private static DocSpec ds;
+	private static Bucket bucket;
+	private static Collection collection;
+	private static int nThreads; 
 	private static int num_docs = 0;
 	private boolean done = false;
 	private Map<String, String> elasticMap = new HashMap<>();
 
-	public DocDelete(DocSpec _ds, Bucket _bucket) {
+	public DocDelete(DocSpec _ds, Bucket _bucket, int _nThreads) {
 		ds = _ds;
 		bucket = _bucket;
+		nThreads = _nThreads;
 	}
 
-	public DocDelete(DocSpec _ds, Collection _collection) {
+	public DocDelete(DocSpec _ds, Collection _collection, int _nThreads) {
 		ds = _ds;
 		collection = _collection;
+		nThreads = _nThreads;
 	}
 
 	@Override
 	public String call() throws Exception {
 		if (collection != null) {
 			log.info("Delete collection " + collection.bucketName() + "." + collection.scopeName() + "." + collection.name());
-			deleteCollection(ds, collection);
+			deleteCollection(collection);
 		} else {
 			log.info("Delete bucket collections");
-			deleteBucketCollections(ds, bucket);
+			deleteBucketCollections();
 		}
 		// delete from elastic
 		if (ds.isElasticSync() && !elasticMap.isEmpty()) {
@@ -61,7 +64,7 @@ public class DocDelete implements Callable<String> {
 		return num_docs + " DOCS UPDATED!";
 	}
 
-	public void deleteBucketCollections(DocSpec ds, Bucket bucket) {
+	public void deleteBucketCollections() {
 		List<Collection> bucketCollections = new ArrayList<>();
 		List<ScopeSpec> bucketScopes = bucket.collections().getAllScopes();
 		for (ScopeSpec scope : bucketScopes) {
@@ -72,14 +75,14 @@ public class DocDelete implements Callable<String> {
 				}
 			}
 		}
-		bucketCollections.parallelStream().forEach(c -> delete(ds, c));
+		bucketCollections.parallelStream().forEach(c -> delete(c));
 	}
 
-	public void deleteCollection(DocSpec ds, Collection collection) {
-		delete(ds, collection);
+	public void deleteCollection(Collection collection) {
+		delete(collection);
 	}
 
-	public void delete(DocSpec ds, Collection collection) {
+	public void delete(Collection collection) {
 		ReactiveCollection rcollection = collection.reactive();
 		num_docs = (int) (ds.get_num_ops() * ((float) ds.get_percent_delete() / 100));
 		Flux<String> docsToDelete = Flux.range(ds.get_startSeqNum(), num_docs)
@@ -90,7 +93,8 @@ public class DocDelete implements Callable<String> {
 			docsToDelete = Flux.fromIterable(docs);
 		}
 		try {
-			docsToDelete.publishOn(Schedulers.elastic())
+			docsToDelete.publishOn(Schedulers
+					.newBoundedElastic(nThreads, 100, "catapult-delete"))
 					// .delayElements(Duration.ofMillis(5))
 					.flatMap(id -> wrap(rcollection, id, elasticMap))
 					//.log()

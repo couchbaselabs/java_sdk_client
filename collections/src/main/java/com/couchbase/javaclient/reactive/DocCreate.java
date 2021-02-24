@@ -25,25 +25,26 @@ import static com.couchbase.client.java.kv.UpsertOptions.upsertOptions;
 public class DocCreate implements Callable<String> {
 
 	private final static Logger log = Logger.getLogger(DocCreate.class);
-	private DocSpec ds;
-	private Bucket bucket;
-	private Collection collection;
+	private static DocSpec ds;
+	private static Bucket bucket;
+	private static Collection collection;
+	private static int nThreads; 
 	private static int num_docs = 0;
 	private Map<String, String> elasticMap = new HashMap<>();
 
-	public DocCreate(DocSpec _ds, Bucket _bucket) {
+	public DocCreate(DocSpec _ds, Bucket _bucket, int _nThreads) {
 		ds = _ds;
 		bucket = _bucket;
+		nThreads = _nThreads;
 	}
 
-	public DocCreate(DocSpec _ds, Collection _collection) {
+	public DocCreate(DocSpec _ds, Collection _collection, int _nThreads) {
 		ds = _ds;
 		collection = _collection;
+		nThreads = _nThreads;
 	}
 
-	public void upsertBucketCollections(DocSpec _ds, Bucket _bucket) {
-		ds = _ds;
-		bucket = _bucket;
+	public void upsertBucketCollections() {
 		List<Collection> bucketCollections = new ArrayList<>();
 		List<ScopeSpec> bucketScopes = bucket.collections().getAllScopes();
 		for (ScopeSpec scope : bucketScopes) {
@@ -54,16 +55,14 @@ public class DocCreate implements Callable<String> {
 				}
 			}
 		}
-		bucketCollections.parallelStream().forEach(c -> upsert(ds, c));
+		bucketCollections.parallelStream().forEach(c -> upsert(c));
 	}
 
-	public void upsertCollection(DocSpec _ds, Collection _collection) {
-		ds = _ds;
-		collection = _collection;
-		upsert(ds, collection);
+	public void upsertCollection(Collection collection) {
+		upsert(collection);
 	}
 
-	public void upsert(DocSpec ds, Collection collection) {
+	public void upsert(Collection collection) {
 		ReactiveCollection rcollection = collection.reactive();
 		num_docs = (int) (ds.get_num_ops() * ((float) ds.get_percent_create() / 100));
 		Flux<String> docsToUpsert = Flux.range(ds.get_startSeqNum(), num_docs)
@@ -76,7 +75,10 @@ public class DocCreate implements Callable<String> {
 		List<MutationResult> results;
 		try {
 			if ("Binary".equals(ds.get_template())) {
-				results = docsToUpsert.publishOn(Schedulers.elastic())
+				
+				results = docsToUpsert.publishOn(Schedulers
+						// Num threads, items in queue, thread name prefix
+						.newBoundedElastic(nThreads, 100, "catapult-create"))
 						.flatMap(
 								key -> rcollection.upsert(key, new Binary().createBinaryObject(ds.faker, ds.get_size()),
 										upsertOptions().transcoder(RawBinaryTranscoder.INSTANCE)
@@ -86,7 +88,8 @@ public class DocCreate implements Callable<String> {
 						.blockLast(Duration.ofMinutes(10));
 			} else {
 				DocTemplate docTemplate = DocTemplateFactory.getDocTemplate(ds);
-				results = docsToUpsert.publishOn(Schedulers.elastic())
+				results = docsToUpsert.publishOn(Schedulers
+						.newBoundedElastic(nThreads, 100, "catapult-create"))
 						.flatMap(key -> rcollection.upsert(key, getObject(key, docTemplate, elasticMap),
 								upsertOptions().expiry(Duration.ofSeconds(ds.get_expiry()))))
 						.buffer(1000)
@@ -115,15 +118,17 @@ public class DocCreate implements Callable<String> {
 	@Override
 	public String call() throws Error {
 		if (collection != null) {
-			log.info("Upsert collection " + collection.bucketName() + "." + collection.scopeName() + "." + collection.name());
-			upsertCollection(ds, collection);
+			log.info("Upsert collection " + collection.bucketName() + "." + collection.scopeName() + "."
+					+ collection.name());
+			upsertCollection(collection);
 		} else {
 			log.info("Upsert bucket collections");
-			upsertBucketCollections(ds, bucket);
+			upsertBucketCollections();
 		}
 		if (ds.isElasticSync() && !elasticMap.isEmpty()) {
 			File elasticFile = FileUtils.writeForElastic(elasticMap, ds.get_template(), "create");
-			ElasticSync.sync(ds.getElasticIP(), ds.getElasticPort(), ds.getElasticLogin(), ds.getElasticPassword(), elasticFile, 5);
+			ElasticSync.sync(ds.getElasticIP(), ds.getElasticPort(), ds.getElasticLogin(), 
+					ds.getElasticPassword(), elasticFile, 5);
 		}
 		return num_docs + " DOCS CREATED!";
 	}

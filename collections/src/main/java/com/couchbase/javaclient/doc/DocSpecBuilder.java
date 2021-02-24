@@ -1,11 +1,12 @@
 package com.couchbase.javaclient.doc;
 
+import java.util.List;
+
 public class DocSpecBuilder {
 	int _num_ops;
 	int _percent_create;
 	int _percent_update;
 	int _percent_delete;
-	String _load_pattern;
 	int _startSeqNum;
 	String _prefix;
 	String _suffix;
@@ -22,19 +23,15 @@ public class DocSpecBuilder {
 	String elasticLogin;
 	String elasticPassword;
 	boolean output;
+	List<String> fieldsToUpdate;
 
 	public DocSpecBuilder() {
 	}
 
 	public DocSpec buildDocSpec() {
-		return new DocSpec(_num_ops, _percent_create, _percent_update, _percent_delete, _load_pattern, _startSeqNum,
+		return new DocSpec(_num_ops, _percent_create, _percent_update, _percent_delete, _startSeqNum,
 				_prefix, _suffix, _template, _expiry, _size, _start, _end, _dataFile, _shuffleDocs, isElasticSync,
-				elasticIP, elasticPort, elasticLogin, elasticPassword, output);
-	}
-
-	public DocSpecBuilder loadPattern(String _load_pattern) {
-		this._load_pattern = _load_pattern;
-		return this;
+				elasticIP, elasticPort, elasticLogin, elasticPassword, output, fieldsToUpdate);
 	}
 
 	public DocSpecBuilder numOps(int _num_ops) {
@@ -134,6 +131,11 @@ public class DocSpecBuilder {
 
 	public DocSpecBuilder setOutput(boolean output) {
 		this.output = output;
+		return this;
+	}
+	
+	public DocSpecBuilder fieldsToUpdate(List<String> fieldsToUpdate) {
+		this.fieldsToUpdate = fieldsToUpdate;
 		return this;
 	}
 }

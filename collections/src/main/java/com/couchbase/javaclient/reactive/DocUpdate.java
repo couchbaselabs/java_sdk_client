@@ -29,34 +29,34 @@ public class DocUpdate implements Callable<String> {
 
 	private final static Logger log = Logger.getLogger(DocUpdate.class);
 
-	private DocSpec ds;
-	private Bucket bucket;
-	private Collection collection;
+	private static DocSpec ds;
+	private static Bucket bucket;
+	private static Collection collection;
+	private static int nThreads; 
 	private static int num_docs = 0;
 	private boolean done = false;
-	private List<String> fieldsToUpdate;
 	private Map<String, String> elasticMap = new HashMap<>();
 
-	public DocUpdate(DocSpec _ds, Bucket _bucket, List<String> fieldsToUpdate) {
+	public DocUpdate(DocSpec _ds, Bucket _bucket, int _nThreads) {
 		ds = _ds;
 		bucket = _bucket;
-		this.fieldsToUpdate = fieldsToUpdate;
+		nThreads = _nThreads;
 	}
 
-	public DocUpdate(DocSpec _ds, Collection _collection, List<String> fieldsToUpdate) {
+	public DocUpdate(DocSpec _ds, Collection _collection, int _nThreads) {
 		ds = _ds;
 		collection = _collection;
-		this.fieldsToUpdate = fieldsToUpdate;
+		nThreads = _nThreads;
 	}
 
 	@Override
 	public String call() throws Exception {
 		if (collection != null) {
 			log.info("Update collection " + collection.bucketName() + "." + collection.scopeName() + "." + collection.name());
-			updateCollection(ds, collection);
+			updateCollection(collection);
 		} else {
 			log.info("Update bucket collections");
-			updateBucketCollections(ds, bucket);
+			updateBucketCollections();
 		}
 		// upsert to elastic
 		if (ds.isElasticSync() && !elasticMap.isEmpty()) {
@@ -67,7 +67,7 @@ public class DocUpdate implements Callable<String> {
 		return num_docs + " DOCS UPDATED!";
 	}
 
-	public void updateBucketCollections(DocSpec ds, Bucket bucket) {
+	public void updateBucketCollections() {
 		List<Collection> bucketCollections = new ArrayList<>();
 		List<ScopeSpec> bucketScopes = bucket.collections().getAllScopes();
 		for (ScopeSpec scope : bucketScopes) {
@@ -78,14 +78,14 @@ public class DocUpdate implements Callable<String> {
 				}
 			}
 		}
-		bucketCollections.parallelStream().forEach(c -> update(ds, c));
+		bucketCollections.parallelStream().forEach(c -> update(c));
 	}
 
-	public void updateCollection(DocSpec ds, Collection collection) {
-		update(ds, collection);
+	public void updateCollection(Collection collection) {
+		update(collection);
 	}
 
-	public void update(DocSpec ds, Collection collection) {
+	public void update(Collection collection) {
 		ReactiveCollection rcollection = collection.reactive();
 		num_docs = (int) (ds.get_num_ops() * ((float) ds.get_percent_update() / 100));
 		Flux<String> docsToUpdate = Flux.range(ds.get_startSeqNum(), num_docs)
@@ -98,7 +98,9 @@ public class DocUpdate implements Callable<String> {
 		List<MutationResult> results;	
 		try {
 			if ("Binary".equals(ds.get_template())) {
-				results = docsToUpdate.publishOn(Schedulers.elastic())
+				results = docsToUpdate.publishOn(Schedulers
+						// Num threads, items in queue, thread name prefix
+						.newBoundedElastic(nThreads, 100, "catapult-update"))
 						.flatMap(
 								key -> rcollection.upsert(key, new Binary().createBinaryObject(ds.faker, ds.get_size()),
 										upsertOptions().transcoder(RawBinaryTranscoder.INSTANCE)
@@ -108,7 +110,8 @@ public class DocUpdate implements Callable<String> {
 						.blockLast(Duration.ofMinutes(10));
 			} else {
 				DocTemplate docTemplate = DocTemplateFactory.getDocTemplate(ds);
-				results = docsToUpdate.publishOn(Schedulers.elastic())
+				results = docsToUpdate.publishOn(Schedulers
+						.newBoundedElastic(nThreads, 100, "catapult-update"))
 						.flatMap(key -> rcollection.upsert(key, getObject(key, docTemplate, elasticMap, collection),
 								upsertOptions().expiry(Duration.ofSeconds(ds.get_expiry()))))
 						.buffer(1000)
@@ -129,7 +132,8 @@ public class DocUpdate implements Callable<String> {
 	}
 
 	private JsonObject getObject(String key, DocTemplate docTemplate, Map<String, String> elasticMap, Collection collection) {
-		JsonObject obj = docTemplate.updateJsonObject(collection.get(key).contentAsObject(), fieldsToUpdate);
+		JsonObject obj = docTemplate.updateJsonObject(collection.get(key).contentAsObject(), 
+				ds.get_fieldsToUpdate());
 		elasticMap.put(key, obj.toString());
 		return obj;
 	}

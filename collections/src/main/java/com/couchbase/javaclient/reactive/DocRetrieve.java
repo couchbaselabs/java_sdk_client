@@ -22,36 +22,39 @@ public class DocRetrieve implements Callable<String> {
 
 	private final static Logger log = Logger.getLogger(DocRetrieve.class);
 
-	private DocSpec ds;
-	private Bucket bucket;
-	private Collection collection;
+	private static DocSpec ds;
+	private static Bucket bucket;
+	private static Collection collection;
+	private static int nThreads; 
 	private static int num_docs = 0;
 	private boolean done = false;
 
-	public DocRetrieve(DocSpec _ds, Bucket _bucket) {
+	public DocRetrieve(DocSpec _ds, Bucket _bucket, int _nThreads) {
 		ds = _ds;
 		bucket = _bucket;
+		nThreads = _nThreads;
 	}
 
-	public DocRetrieve(DocSpec _ds, Collection _collection) {
+	public DocRetrieve(DocSpec _ds, Collection _collection, int _nThreads) {
 		ds = _ds;
 		collection = _collection;
+		nThreads = _nThreads;
 	}
 
 	@Override
 	public String call() throws Exception {
 		if (collection != null) {
 			log.info("Retrieve collection " + collection.bucketName() + "." + collection.scopeName() + "." + collection.name());
-			printCollection(ds, collection);
+			printCollection(collection);
 		} else {
 			log.info("Retrieve bucket collections");
-			printBucketCollections(ds, bucket);
+			printBucketCollections();
 		}
 		done = true;
 		return num_docs + " DOCS PRESENT!";
 	}
 
-	public static void printBucketCollections(DocSpec ds, Bucket bucket) {
+	public static void printBucketCollections() {
 		List<Collection> bucketCollections = new ArrayList<>();
 		List<ScopeSpec> bucketScopes = bucket.collections().getAllScopes();
 		for (ScopeSpec scope : bucketScopes) {
@@ -63,10 +66,10 @@ public class DocRetrieve implements Callable<String> {
 			}
 		}
 		log.info("Collections in " + bucket + ' ' + bucketCollections);
-		bucketCollections.parallelStream().forEach(c -> printCollection(ds, c));
+		bucketCollections.parallelStream().forEach(c -> printCollection(c));
 	}
 
-	public static void printCollection(DocSpec ds, Collection collection) {
+	public static void printCollection(Collection collection) {
 		ReactiveCollection rcollection = collection.reactive();
 		int created_docs = (int) (ds.get_num_ops() * ((float) ds.get_percent_create() / 100));
 		int deleted_docs = (int) (ds.get_num_ops() * ((float) ds.get_percent_delete() / 100));
@@ -96,7 +99,10 @@ public class DocRetrieve implements Callable<String> {
 		if(ds.get_shuffle_docs()){
 			java.util.Collections.shuffle(docsToFetchList);
 		}
-		List<GetResult> actual_docs = Flux.fromIterable(docsToFetchList).flatMap(id -> rcollection.get(id))
+		List<GetResult> actual_docs = Flux.fromIterable(docsToFetchList)
+				.publishOn(Schedulers
+				.newBoundedElastic(nThreads, 100, "catapult-read"))
+				.flatMap(id -> rcollection.get(id))
 				// Num retries
 				.retry(20)
 				.collectList()

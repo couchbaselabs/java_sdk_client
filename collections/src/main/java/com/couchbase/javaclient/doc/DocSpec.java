@@ -1,13 +1,13 @@
 package com.couchbase.javaclient.doc;
 
 import com.github.javafaker.Faker;
+import java.util.List;
 
 public class DocSpec {
 	int _num_ops;
 	int _percent_create;
 	int _percent_update;
 	int _percent_delete;
-	String _load_pattern;
 	int _startSeqNum;
 	String _prefix;
 	String _suffix;
@@ -24,18 +24,17 @@ public class DocSpec {
 	private String elasticLogin;
 	private String elasticPassword;
 	private boolean output;
+	List<String> _fieldsToUpdate;
 	public static Faker faker = new Faker();
 
-	public DocSpec(int _num_ops, int _percent_create, int _percent_update, int _percent_delete, String _load_pattern,
-			int _startSeqNum, String _prefix, String _suffix, String _template, int _expiry, int _size, int _start,
-			int _end, String _dataFile, boolean _shuffle_docs, boolean isElasticSync, String elasticIP, String elasticPort,
-			String elasticLogin, String elasticPassword, boolean output) {
-
+	public DocSpec(int _num_ops, int _percent_create, int _percent_update, int _percent_delete, int _startSeqNum,
+			String _prefix, String _suffix, String _template, int _expiry, int _size, int _start,
+			int _end, String _dataFile, boolean _shuffle_docs, boolean isElasticSync, String elasticIP, 
+			String elasticPort, String elasticLogin, String elasticPassword, boolean output, List<String> _fieldsToUpdate) {
 		this._num_ops = _num_ops;
 		this._percent_create = _percent_create;
 		this._percent_update = _percent_update;
 		this._percent_delete = _percent_delete;
-		this._load_pattern = _load_pattern;
 		this._startSeqNum = _startSeqNum;
 		this._prefix = _prefix;
 		this._suffix = _suffix;
@@ -52,6 +51,7 @@ public class DocSpec {
 		this.setElasticLogin(elasticLogin);
 		this.setElasticPassword(elasticPassword);
 		this.output = output;
+		this._fieldsToUpdate = _fieldsToUpdate;
 	}
 
 	public int get_num_ops() {
@@ -68,10 +68,6 @@ public class DocSpec {
 
 	public int get_percent_delete() {
 		return _percent_delete;
-	}
-
-	public String get_load_pattern() {
-		return _load_pattern;
 	}
 
 	public int get_startSeqNum() {
@@ -114,6 +110,10 @@ public class DocSpec {
 		return _shuffle_docs;
 	}
 
+	public List<String> get_fieldsToUpdate(){
+		return _fieldsToUpdate;
+	}
+	
 	public boolean isElasticSync() { return this.isElasticSync; }
 
 	public void set_num_ops(int _num_ops) {
@@ -130,10 +130,6 @@ public class DocSpec {
 
 	public void set_percent_delete(int _percent_delete) {
 		this._percent_delete = _percent_delete;
-	}
-
-	public void set_load_pattern(String _load_pattern) {
-		this._load_pattern = _load_pattern;
 	}
 
 	public void set_startSeqNum(int _startSeqNum) {

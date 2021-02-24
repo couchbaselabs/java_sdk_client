@@ -8,8 +8,11 @@ import com.couchbase.client.java.Cluster;
 import com.couchbase.client.java.ClusterOptions;
 import com.couchbase.client.java.Collection;
 import com.couchbase.client.java.env.ClusterEnvironment;
+import com.couchbase.client.core.env.*;
+import com.couchbase.client.core.endpoint.CircuitBreakerConfig;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+
 
 public class ConnectionFactory {
 
@@ -31,7 +34,7 @@ public class ConnectionFactory {
 	private Bucket connectBucket(Cluster cluster, String bucketName) {
 		try {
 			bucket = cluster.bucket(bucketName);
-			bucket.waitUntilReady(Duration.ofSeconds(30));
+			bucket.waitUntilReady(Duration.ofSeconds(60));
 		} catch (Exception ex) {
 			this.handleException("Cannot connect to bucket " + bucketName + "\n" + ex);
 		}
@@ -40,7 +43,17 @@ public class ConnectionFactory {
 
 	private Cluster connectCluster(String clusterName, String username, String password) {
 		try {
-			environment = ClusterEnvironment.builder().build();
+			environment = ClusterEnvironment.builder()
+					.compressionConfig(CompressionConfig.create().enable(true))
+					.timeoutConfig(TimeoutConfig
+							.kvTimeout(Duration.ofSeconds(60))
+							.queryTimeout(Duration.ofSeconds(100))
+							.searchTimeout(Duration.ofSeconds(100))
+							.analyticsTimeout(Duration.ofSeconds(100)))
+					.ioConfig(IoConfig.kvCircuitBreakerConfig(CircuitBreakerConfig.builder().enabled(true)
+							.volumeThreshold(20).errorThresholdPercentage(50).sleepWindow(Duration.ofSeconds(5))
+							.rollingWindow(Duration.ofMinutes(5))))
+					.build();
 			environment.eventBus().subscribe(event -> {
 				if (event.severity() == Event.Severity.ERROR) {
 					log.error("Hit unrecoverable error..exiting \n" + event);

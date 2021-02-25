@@ -49,6 +49,10 @@ public class DocOperations {
 				.help("Percentage of deletes out of num_ops");
 		parser.addArgument("-pr", "--percent_read").type(Integer.class).setDefault(0)
 				.help("Percentage of reads out of num_ops");
+		parser.addArgument("-l", "--load_pattern").choices("uniform", "sparse", "dense").setDefault("uniform")
+				.help("uniform: load all collections with percent_create docs, "
+						"sparse: load all collections with maximum of percent_create docs"
+						"dense: load all collections with minimum of percent_create docs");
 		parser.addArgument("-nt", "--num_threads").type(Integer.class).setDefault(4)
 				.help("Max number of threads per operation type");
 		parser.addArgument("-sd", "--shuffle_docs").type(Boolean.class).setDefault(Boolean.FALSE)
@@ -68,8 +72,7 @@ public class DocOperations {
 		parser.addArgument("-dt", "--template").setDefault("Person").help("JSON document template");
 		parser.addArgument("-de", "--expiry").type(Integer.class).setDefault(0).help("Document expiry in seconds");
 		parser.addArgument("-ds", "--size").type(Integer.class).setDefault(500).help("Document size in bytes");
-		parser.addArgument("-st", "--start").type(Integer.class).setDefault(0)
-				.help("Starting documents operations index");
+		parser.addArgument("-st", "--start").type(Integer.class).setDefault(0).help("Starting documents operations index");
 		parser.addArgument("-en", "--end").type(Integer.class).setDefault(0).help("Ending documents operations index");
 		parser.addArgument("-fu", "--fields_to_update").type(String.class).setDefault("")
 				.help("Comma separated list of fields to update.");

@@ -50,9 +50,7 @@ public class DocOperations {
 		parser.addArgument("-pr", "--percent_read").type(Integer.class).setDefault(0)
 				.help("Percentage of reads out of num_ops");
 		parser.addArgument("-l", "--load_pattern").choices("uniform", "sparse", "dense").setDefault("uniform")
-				.help("uniform: load all collections with percent_create docs, "
-						"sparse: load all collections with maximum of percent_create docs"
-						"dense: load all collections with minimum of percent_create docs");
+				.help("uniform, sparse, dense");
 		parser.addArgument("-nt", "--num_threads").type(Integer.class).setDefault(4)
 				.help("Max number of threads per operation type");
 		parser.addArgument("-sd", "--shuffle_docs").type(Boolean.class).setDefault(Boolean.FALSE)

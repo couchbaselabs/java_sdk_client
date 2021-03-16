@@ -50,9 +50,9 @@ public class ConnectionFactory {
 							.queryTimeout(Duration.ofSeconds(100))
 							.searchTimeout(Duration.ofSeconds(100))
 							.analyticsTimeout(Duration.ofSeconds(100)))
-					.ioConfig(IoConfig.kvCircuitBreakerConfig(CircuitBreakerConfig.builder().enabled(true)
-							.volumeThreshold(20).errorThresholdPercentage(50).sleepWindow(Duration.ofSeconds(5))
-							.rollingWindow(Duration.ofMinutes(5))))
+//					.ioConfig(IoConfig.kvCircuitBreakerConfig(CircuitBreakerConfig.builder().enabled(true)
+//							.volumeThreshold(20).errorThresholdPercentage(50).sleepWindow(Duration.ofSeconds(5))
+//							.rollingWindow(Duration.ofMinutes(5))))
 					.build();
 			environment.eventBus().subscribe(event -> {
 				if (event.severity() == Event.Severity.ERROR) {

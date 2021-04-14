@@ -10,6 +10,7 @@ import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
@@ -102,11 +103,23 @@ public final class FileUtils {
         return localFileName;
     }
 
-    public static File writeForElastic(Map<String, String> objects, String dataset, String operation) {
+    public static List<File> writeForElastic(Map<String, String> objects, String dataset, String operation) {
+        final List<File> filesList = new ArrayList<>();
         try {
-            final File elasticFile = getNewFile(ElasticSync.filePrefix, operation);
-            final FileWriter writer = new FileWriter(elasticFile);
+            File elasticFile = null;
+            FileWriter writer = null;
+            int rowCount = 0;
             for (String id: objects.keySet()) {
+                if (rowCount % 1000 == 0) {
+                    if (writer != null) {
+                        writer.flush();
+                        writer.close();
+                        filesList.add(elasticFile);
+                    }
+                    elasticFile = getNewFile(ElasticSync.filePrefix, operation, rowCount);
+                    writer = new FileWriter(elasticFile);
+                }
+
                 writer.write(createElasticObject(dataset, id, operation));
                 if ("update".equals(operation)){
                     writer.write("{ \"doc\" : "+objects.get(id)+" }\n");
@@ -114,10 +127,15 @@ public final class FileUtils {
                 else if ("create".equals(operation)){
                     writer.write(objects.get(id) + "\n");
                 }
+                rowCount++;
             }
-            writer.flush();
-            writer.close();
-            return elasticFile;
+            if (writer != null) {
+                writer.flush();
+                writer.close();
+                filesList.add(elasticFile);
+            }
+
+            return filesList;
         }catch(IOException ioe){
             System.err.println("Cannot write data file for Elastic - " + ioe.getMessage());
             ioe.printStackTrace();
@@ -126,8 +144,8 @@ public final class FileUtils {
         }
     }
 
-    public static File getNewFile(String filePrefix, String fileType) {
-        File f = new File(filePrefix + fileType + ".txt");
+    public static File getNewFile(String filePrefix, String fileType, int filePostfix) {
+        File f = new File(filePrefix + fileType + filePostfix + ".txt");
         if (f.exists()) {
             f.delete();
         }

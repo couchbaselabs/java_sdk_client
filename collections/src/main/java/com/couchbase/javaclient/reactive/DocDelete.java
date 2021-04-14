@@ -57,8 +57,8 @@ public class DocDelete implements Callable<String> {
 		}
 		// delete from elastic
 		if (ds.isElasticSync() && !elasticMap.isEmpty()) {
-			File elasticFile = FileUtils.writeForElastic(elasticMap, ds.get_template(), "delete");
-			ElasticSync.sync(ds.getElasticIP(), ds.getElasticPort(), ds.getElasticLogin(), ds.getElasticPassword(), elasticFile, 5);
+			List<File> elasticFiles = FileUtils.writeForElastic(elasticMap, ds.get_template(), "delete");
+			ElasticSync.syncFiles(ds.getElasticIP(), ds.getElasticPort(), ds.getElasticLogin(), ds.getElasticPassword(), elasticFiles, 5);
 		}
 		done = true;
 		return num_docs + " DOCS UPDATED!";
@@ -97,7 +97,7 @@ public class DocDelete implements Callable<String> {
 					.newBoundedElastic(nThreads, 100, "catapult-delete"))
 					// .delayElements(Duration.ofMillis(5))
 					.flatMap(id -> wrap(rcollection, id, elasticMap))
-					//.log()
+					// .log()
 					// Num retries
 					.retry(20)
 					// Block until last value, complete or timeout expiry

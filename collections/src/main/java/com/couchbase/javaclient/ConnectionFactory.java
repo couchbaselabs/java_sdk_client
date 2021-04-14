@@ -43,6 +43,7 @@ public class ConnectionFactory {
 
 	private Cluster connectCluster(String clusterName, String username, String password) {
 		try {
+
 			environment = ClusterEnvironment.builder()
 					.compressionConfig(CompressionConfig.create().enable(true))
 					.timeoutConfig(TimeoutConfig
@@ -50,10 +51,11 @@ public class ConnectionFactory {
 							.queryTimeout(Duration.ofSeconds(100))
 							.searchTimeout(Duration.ofSeconds(100))
 							.analyticsTimeout(Duration.ofSeconds(100)))
-//					.ioConfig(IoConfig.kvCircuitBreakerConfig(CircuitBreakerConfig.builder().enabled(true)
+							.ioConfig(IoConfig.numKvConnections(2))
 //							.volumeThreshold(20).errorThresholdPercentage(50).sleepWindow(Duration.ofSeconds(5))
 //							.rollingWindow(Duration.ofMinutes(5))))
 					.build();
+
 			environment.eventBus().subscribe(event -> {
 				if (event.severity() == Event.Severity.ERROR) {
 					log.error("Hit unrecoverable error..exiting \n" + event);
@@ -67,6 +69,8 @@ public class ConnectionFactory {
 		}
 		return cluster;
 	}
+
+
 
 	private Collection connectCollection(Bucket bucket, String scopeName, String collectionName) {
 		try {

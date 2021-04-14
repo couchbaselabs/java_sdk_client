@@ -11,15 +11,25 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.List;
 
 public final class ElasticSync {
 
     private final static Logger log = Logger.getLogger(ElasticSync.class);
     public static final String filePrefix = "/tmp/es_bulk_";
 
-    public static void sync(String elasticInstanceIP, String elasticPort, String elasticLogin, String elasticPassword, File file, int retryCount) {
-        log.info("Started Elastic sync..");
+    public static void syncFiles(String elasticInstanceIP, String elasticPort, String elasticLogin, String elasticPassword, List<File> files, int retryCount) {
+        log.info("Started Elastic sync... Need to sync [" + files.size() + "] files.");
+        int i = 1;
+        for (File file: files) {
+            log.info("Starts sync file number: [" + i + "]");
+            sync(elasticInstanceIP, elasticPort, elasticLogin, elasticPassword, file, retryCount);
+            i++;
+        }
+        log.info("Completed Elastic sync..");
+    }
 
+    private static void sync(String elasticInstanceIP, String elasticPort, String elasticLogin, String elasticPassword, File file, int retryCount) {
         HttpClient httpclient = HttpClients.createDefault();
         HttpPost httpPost = new HttpPost("http://" + elasticInstanceIP + ":" + elasticPort + "/_bulk");
         // auth header
@@ -43,8 +53,9 @@ public final class ElasticSync {
             }
         } catch (IOException e) {
             log.error(e);
+            log.info("Elastic sync failed..");
+            System.exit(1);
         }
-        log.info("Completed Elastic sync..");
     }
 
     public static String createElasticObject(String dataset, String id, String operation) {

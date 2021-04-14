@@ -60,8 +60,8 @@ public class DocUpdate implements Callable<String> {
 		}
 		// upsert to elastic
 		if (ds.isElasticSync() && !elasticMap.isEmpty()) {
-			final File elasticFile = FileUtils.writeForElastic(elasticMap, ds.get_template(), "update");
-			ElasticSync.sync(ds.getElasticIP(), ds.getElasticPort(), ds.getElasticLogin(), ds.getElasticPassword(), elasticFile, 5);
+			final List<File> elasticFiles = FileUtils.writeForElastic(elasticMap, ds.get_template(), "update");
+			ElasticSync.syncFiles(ds.getElasticIP(), ds.getElasticPort(), ds.getElasticLogin(), ds.getElasticPassword(), elasticFiles, 5);
 		}
 		done = true;
 		return num_docs + " DOCS UPDATED!";
@@ -117,6 +117,7 @@ public class DocUpdate implements Callable<String> {
 						.buffer(1000)
 						// Num retries
 						.retry(20)
+						// .log()
 						// Block until last value, complete or timeout expiry
 						.blockLast(Duration.ofMinutes(10));
 			}

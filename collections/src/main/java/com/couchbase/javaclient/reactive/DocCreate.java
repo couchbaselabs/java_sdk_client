@@ -126,9 +126,9 @@ public class DocCreate implements Callable<String> {
 			upsertBucketCollections();
 		}
 		if (ds.isElasticSync() && !elasticMap.isEmpty()) {
-			File elasticFile = FileUtils.writeForElastic(elasticMap, ds.get_template(), "create");
-			ElasticSync.sync(ds.getElasticIP(), ds.getElasticPort(), ds.getElasticLogin(), 
-					ds.getElasticPassword(), elasticFile, 5);
+			List<File> elasticFiles = FileUtils.writeForElastic(elasticMap, ds.get_template(), "create");
+			ElasticSync.syncFiles(ds.getElasticIP(), ds.getElasticPort(), ds.getElasticLogin(),
+					ds.getElasticPassword(), elasticFiles, 5);
 		}
 		return num_docs + " DOCS CREATED!";
 	}

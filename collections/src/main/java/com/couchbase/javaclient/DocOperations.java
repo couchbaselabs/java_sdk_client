@@ -1,5 +1,6 @@
 package com.couchbase.javaclient;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
@@ -177,6 +178,7 @@ public class DocOperations {
 			delete = ForkJoinTask.adapt(new DocDelete(dSpec, collection, nThreads));
 			retrieve = ForkJoinTask.adapt(new DocRetrieve(dSpec, collection, nThreads));
 		}
+		bucket.waitUntilReady(Duration.ofSeconds(30));
 		if (dSpec.get_percent_create() > 0) {
 			log.info("Invoke create");
 			pool.invoke(create);

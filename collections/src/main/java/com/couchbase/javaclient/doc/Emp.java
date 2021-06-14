@@ -77,7 +77,7 @@ public class Emp implements DocTemplate{
         return jsonObject;
     }
 
-    public JsonObject updateJsonObject(JsonObject obj, List<String> fieldsToUpdate) {
+    public JsonObject updateJsonObject(Faker faker, JsonObject obj, List<String> fieldsToUpdate) {
         if(fieldsToUpdate == null || fieldsToUpdate.size() == 0){
             obj.put("salary", generateSalary());
             obj.put("mutated", 1);

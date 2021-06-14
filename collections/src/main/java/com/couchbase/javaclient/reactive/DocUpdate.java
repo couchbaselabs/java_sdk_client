@@ -133,7 +133,7 @@ public class DocUpdate implements Callable<String> {
 	}
 
 	private JsonObject getObject(String key, DocTemplate docTemplate, Map<String, String> elasticMap, Collection collection) {
-		JsonObject obj = docTemplate.updateJsonObject(collection.get(key).contentAsObject(), 
+		JsonObject obj = docTemplate.updateJsonObject(ds.faker, collection.get(key).contentAsObject(), 
 				ds.get_fieldsToUpdate());
 		elasticMap.put(key, obj.toString());
 		return obj;

@@ -50,7 +50,7 @@ public class Employee implements DocTemplate{
 	}
 
 
-	public JsonObject updateJsonObject(JsonObject obj, List<String> fieldsToUpdate) {
+	public JsonObject updateJsonObject(Faker faker, JsonObject obj, List<String> fieldsToUpdate) {
 		return obj;
 	}
 

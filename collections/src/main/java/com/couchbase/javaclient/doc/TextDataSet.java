@@ -36,7 +36,7 @@ public class TextDataSet implements DocTemplate {
     }
 
     @Override
-    public JsonObject updateJsonObject(JsonObject obj, List<String> fieldsToUpdate) {
+    public JsonObject updateJsonObject(Faker faker, JsonObject obj, List<String> fieldsToUpdate) {
         return obj;
     }
 

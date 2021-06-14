@@ -84,7 +84,50 @@ public class Hotel implements DocTemplate {
 		return jsonObject;
 	}
 
-	public JsonObject updateJsonObject(JsonObject obj, List<String> fieldsToUpdate) {
+	public JsonObject updateJsonObject(Faker faker, JsonObject obj, List<String> fieldsToUpdate) {		
+		HotelDetails hdetails = new HotelDetails(faker);
+		if(fieldsToUpdate.contains("address")){
+			obj.put("address", faker.address().streetAddress());
+		}
+		if(fieldsToUpdate.contains("city")){
+			obj.put("city", faker.address().city());
+		}
+		if(fieldsToUpdate.contains("country")){
+			obj.put("country", faker.address().country());
+		}
+		if(fieldsToUpdate.contains("email")){
+			obj.put("email", hdetails.getEmail());
+		}
+		if(fieldsToUpdate.contains("free_breakfast")){
+			obj.put("free_breakfast", ThreadLocalRandom.current().nextBoolean());
+		}
+		if(fieldsToUpdate.contains("free_parking")){
+			obj.put("free_parking", ThreadLocalRandom.current().nextBoolean());
+		}
+		if(fieldsToUpdate.contains("name")){
+			obj.put("name", hdetails.getName());
+		}
+		if(fieldsToUpdate.contains("phone")){
+			obj.put("phone", faker.phoneNumber().phoneNumber());
+		}
+		if(fieldsToUpdate.contains("price")){
+			obj.put("price", (float) ThreadLocalRandom.current().nextInt(500, 2000));
+		}
+		if(fieldsToUpdate.contains("avg_rating")){
+			obj.put("avg_rating", (float) ThreadLocalRandom.current().nextInt(1, 5));
+		}
+		if(fieldsToUpdate.contains("public_likes")){
+			obj.put("public_likes", hdetails.getLikesArray());
+		}
+		if(fieldsToUpdate.contains("reviews")){
+			obj.put("reviews", hdetails.getReviewsArray());
+		}
+		if(fieldsToUpdate.contains("type")){
+			obj.put("type", hdetails.getType());
+		}
+		if(fieldsToUpdate.contains("url")){
+			obj.put("url", faker.internet().url());
+		}
 		return obj;
 	}
 

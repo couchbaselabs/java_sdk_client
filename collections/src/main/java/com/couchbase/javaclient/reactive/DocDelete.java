@@ -92,16 +92,22 @@ public class DocDelete implements Callable<String> {
 			java.util.Collections.shuffle(docs);
 			docsToDelete = Flux.fromIterable(docs);
 		}
+		List<MutationResult> results;
 		try {
-			docsToDelete.publishOn(Schedulers
+			results = docsToDelete.publishOn(Schedulers
 					.newBoundedElastic(nThreads, 100, "catapult-delete"))
 					// .delayElements(Duration.ofMillis(5))
 					.flatMap(id -> wrap(rcollection, id, elasticMap))
-					// .log()
+					.buffer(1000)
 					// Num retries
 					.retry(20)
 					// Block until last value, complete or timeout expiry
 					.blockLast(Duration.ofMinutes(10));
+			// print results
+			if (ds.isOutput()) {
+				System.out.println("Delete results");
+				FileUtils.printMutationResults(results, log);
+			}
 		} catch (Exception err) {
 			log.error(err);
 		}

@@ -8,9 +8,11 @@ import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.TimeUnit;
 
 import com.couchbase.client.java.Bucket;
+import com.couchbase.client.java.Cluster;
 import com.couchbase.client.java.Collection;
 import com.couchbase.javaclient.doc.DocSpec;
 import com.couchbase.javaclient.doc.DocSpecBuilder;
+import com.couchbase.javaclient.queryutils.QueryRunner;
 import com.couchbase.javaclient.reactive.DocCreate;
 import com.couchbase.javaclient.reactive.DocDelete;
 import com.couchbase.javaclient.reactive.DocRetrieve;
@@ -85,6 +87,8 @@ public class DocOperations {
 				.help("Elastic instance user login");
 		parser.addArgument("-es_password", "--elastic_password").type(String.class).setDefault("")
 				.help("Elastic instance password");
+        parser.addArgument("-query", "--query").type(String.class).setDefault("")
+                .help("query to run");
 
 		// DEBUG < INFO < WARN < ERROR < FATAL < OFF
 		parser.addArgument("-log_level", "--log_level").type(String.class).setDefault("INFO").help("Log level. Levels can be: DEBUG < INFO < WARN < ERROR < FATAL < OFF");
@@ -125,6 +129,7 @@ public class DocOperations {
 				collectionName, Level.toLevel(logLevel, Level.INFO));
 		Bucket bucket = connection.getBucket();
 		Collection collection = connection.getCollection();
+		Cluster cluster = connection.getCluster();
 
 		DocSpec dSpec = new DocSpecBuilder().numOps(ns.getInt("num_ops")).percentCreate(ns.getInt("percent_create"))
 				.percentUpdate(ns.getInt("percent_update")).percentDelete(ns.getInt("percent_delete"))
@@ -136,7 +141,10 @@ public class DocOperations {
 				.setElasticPassword(ns.getString("elastic_password")).setOutput(ns.getBoolean("output"))
 				.fieldsToUpdate(fieldsToUpdate).buildDocSpec();
 
-		if (ns.getBoolean("loop_forever")) {
+		if (!ns.getString("query").equals("")) {
+			spawnQueryTasks(ns.getString("query"), cluster);
+		}
+		else if (ns.getBoolean("loop_forever")) {
 			log.info("Loop forever");
 			while (true) {
 				try {
@@ -159,6 +167,13 @@ public class DocOperations {
 		System.exit(0);
 	}
 
+	private static void spawnQueryTasks(String query, Cluster cluster) {
+		ForkJoinTask<String> runQuery = null;
+		ForkJoinPool pool = new ForkJoinPool();
+		runQuery = ForkJoinTask.adapt(new QueryRunner(query, cluster));
+		pool.invoke(runQuery);
+		pool.shutdownNow();
+	}
 	private static void spawnTasks(DocSpec dSpec, Boolean all_collections, 
 			Bucket bucket, Collection collection, int nThreads) {
 		ForkJoinTask<String> create = null;

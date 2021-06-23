@@ -2,6 +2,7 @@ package com.couchbase.javaclient.doc;
 
 import com.github.javafaker.Faker;
 import java.util.List;
+import java.util.logging.Level;
 
 public class DocSpec {
 	int _num_ops;
@@ -24,13 +25,14 @@ public class DocSpec {
 	private String elasticLogin;
 	private String elasticPassword;
 	private boolean output;
+	private String loglevel;
 	List<String> _fieldsToUpdate;
 	public static Faker faker = new Faker();
 
 	public DocSpec(int _num_ops, int _percent_create, int _percent_update, int _percent_delete, int _startSeqNum,
 			String _prefix, String _suffix, String _template, int _expiry, int _size, int _start,
 			int _end, String _dataFile, boolean _shuffle_docs, boolean isElasticSync, String elasticIP, 
-			String elasticPort, String elasticLogin, String elasticPassword, boolean output, List<String> _fieldsToUpdate) {
+			String elasticPort, String elasticLogin, String elasticPassword, boolean output, String loglevel, List<String> _fieldsToUpdate) {
 		this._num_ops = _num_ops;
 		this._percent_create = _percent_create;
 		this._percent_update = _percent_update;
@@ -50,7 +52,8 @@ public class DocSpec {
 		this.setElasticPort(elasticPort);
 		this.setElasticLogin(elasticLogin);
 		this.setElasticPassword(elasticPassword);
-		this.output = output;
+		this.output = output; 
+		this.loglevel = loglevel;
 		this._fieldsToUpdate = _fieldsToUpdate;
 	}
 
@@ -189,6 +192,14 @@ public class DocSpec {
 	public String getElasticPassword() { return elasticPassword; }
 
 	public void setElasticPassword(String elasticPassword) { this.elasticPassword = elasticPassword; }
+
+	public Level getNewLogLevel() {
+		return Level.parse(loglevel);
+	}
+
+	public void setNewLogLevel(String loglevel) {
+		this.loglevel = loglevel;
+	}
 
 	public boolean isOutput() {
 		return output;

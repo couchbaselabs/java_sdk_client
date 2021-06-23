@@ -23,6 +23,7 @@ public class DocSpecBuilder {
 	String elasticLogin;
 	String elasticPassword;
 	boolean output;
+	String loglevel;
 	List<String> fieldsToUpdate;
 
 	public DocSpecBuilder() {
@@ -31,7 +32,7 @@ public class DocSpecBuilder {
 	public DocSpec buildDocSpec() {
 		return new DocSpec(_num_ops, _percent_create, _percent_update, _percent_delete, _startSeqNum,
 				_prefix, _suffix, _template, _expiry, _size, _start, _end, _dataFile, _shuffleDocs, isElasticSync,
-				elasticIP, elasticPort, elasticLogin, elasticPassword, output, fieldsToUpdate);
+				elasticIP, elasticPort, elasticLogin, elasticPassword, output, loglevel, fieldsToUpdate);
 	}
 
 	public DocSpecBuilder numOps(int _num_ops) {
@@ -129,11 +130,17 @@ public class DocSpecBuilder {
 		return this;
 	}
 
-	public DocSpecBuilder setOutput(boolean output) {
+	public DocSpecBuilder setOutput(boolean output, String loglevel) {
 		this.output = output;
+		// reactor.util.Logger uses level FINE instead of log4j's DEBUG
+		if (!output) {
+			this.loglevel = "FINE";
+		} else {
+			this.loglevel = loglevel;
+		}
 		return this;
 	}
-	
+
 	public DocSpecBuilder fieldsToUpdate(List<String> fieldsToUpdate) {
 		this.fieldsToUpdate = fieldsToUpdate;
 		return this;

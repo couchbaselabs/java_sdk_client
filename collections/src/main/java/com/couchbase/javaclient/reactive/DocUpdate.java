@@ -21,13 +21,15 @@ import com.couchbase.client.java.manager.collection.ScopeSpec;
 import com.couchbase.javaclient.doc.*;
 import com.couchbase.javaclient.utils.FileUtils;
 
-import org.apache.log4j.Logger;
+import reactor.util.Logger;
+import reactor.util.Loggers;
+import java.util.logging.Level;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 
 public class DocUpdate implements Callable<String> {
 
-	private final static Logger log = Logger.getLogger(DocUpdate.class);
+	private final static Logger log = Loggers.getLogger(DocUpdate.class);
 
 	private static DocSpec ds;
 	private static Bucket bucket;
@@ -105,6 +107,7 @@ public class DocUpdate implements Callable<String> {
 								key -> rcollection.upsert(key, new Binary().createBinaryObject(ds.faker, ds.get_size()),
 										upsertOptions().transcoder(RawBinaryTranscoder.INSTANCE)
 												.expiry(Duration.ofSeconds(ds.get_expiry()))))
+						.log("", ds.getNewLogLevel())
 						.buffer(1000)
 						.retry(20)
 						.blockLast(Duration.ofMinutes(10));
@@ -114,20 +117,15 @@ public class DocUpdate implements Callable<String> {
 						.newBoundedElastic(nThreads, 100, "catapult-update"))
 						.flatMap(key -> rcollection.upsert(key, getObject(key, docTemplate, elasticMap, collection),
 								upsertOptions().expiry(Duration.ofSeconds(ds.get_expiry()))))
+						.log("", ds.getNewLogLevel())
 						.buffer(1000)
 						// Num retries
 						.retry(20)
-						// .log()
 						// Block until last value, complete or timeout expiry
 						.blockLast(Duration.ofMinutes(10));
 			}
-			// print results
-			if (ds.isOutput()) {
-				System.out.println("Update results");
-				FileUtils.printMutationResults(results, log);
-			}
-		} catch (Throwable err) {
-			log.error(err);
+		} catch (Throwable e) {
+			log.error(e.toString());
 		}
 		log.info("Completed update");
 	}

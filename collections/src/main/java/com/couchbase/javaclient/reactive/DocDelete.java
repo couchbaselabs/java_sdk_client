@@ -17,14 +17,16 @@ import com.couchbase.client.java.manager.collection.ScopeSpec;
 import com.couchbase.javaclient.doc.DocSpec;
 
 import com.couchbase.javaclient.utils.FileUtils;
-import org.apache.log4j.Logger;
+import reactor.util.Logger;
+import reactor.util.Loggers;
+import java.util.logging.Level;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 public class DocDelete implements Callable<String> {
 
-	private final static Logger log = Logger.getLogger(DocDelete.class);
+	private final static Logger log = Loggers.getLogger(DocDelete.class);
 
 	private static DocSpec ds;
 	private static Bucket bucket;
@@ -96,20 +98,15 @@ public class DocDelete implements Callable<String> {
 		try {
 			results = docsToDelete.publishOn(Schedulers
 					.newBoundedElastic(nThreads, 100, "catapult-delete"))
-					// .delayElements(Duration.ofMillis(5))
 					.flatMap(id -> wrap(rcollection, id, elasticMap))
+					.log("", ds.getNewLogLevel())
 					.buffer(1000)
 					// Num retries
 					.retry(20)
 					// Block until last value, complete or timeout expiry
 					.blockLast(Duration.ofMinutes(10));
-			// print results
-			if (ds.isOutput()) {
-				System.out.println("Delete results");
-				FileUtils.printMutationResults(results, log);
-			}
 		} catch (Exception err) {
-			log.error(err);
+			log.error(err.toString());
 		}
 
 		log.info("Completed delete");

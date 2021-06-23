@@ -17,14 +17,16 @@ import com.couchbase.client.java.manager.collection.ScopeSpec;
 import com.couchbase.javaclient.doc.*;
 import com.couchbase.javaclient.utils.FileUtils;
 
-import org.apache.log4j.Logger;
+import reactor.util.Logger;
+import reactor.util.Loggers;
+import java.util.logging.Level;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 import static com.couchbase.client.java.kv.UpsertOptions.upsertOptions;
 
 public class DocCreate implements Callable<String> {
 
-	private final static Logger log = Logger.getLogger(DocCreate.class);
+	private final static Logger log = Loggers.getLogger(DocCreate.class);
 	private static DocSpec ds;
 	private static Bucket bucket;
 	private static Collection collection;
@@ -72,44 +74,41 @@ public class DocCreate implements Callable<String> {
 			java.util.Collections.shuffle(docs);
 			docsToUpsert = Flux.fromIterable(docs);
 		}
-		List<MutationResult> results;
+		
 		try {
 			if ("Binary".equals(ds.get_template())) {
-				
-				results = docsToUpsert.publishOn(Schedulers
+				docsToUpsert.publishOn(Schedulers
 						// Num threads, items in queue, thread name prefix
 						.newBoundedElastic(nThreads, 100, "catapult-create"))
 						.flatMap(
 								key -> rcollection.upsert(key, new Binary().createBinaryObject(ds.faker, ds.get_size()),
 										upsertOptions().transcoder(RawBinaryTranscoder.INSTANCE)
 												.expiry(Duration.ofSeconds(ds.get_expiry()))))
+						.log("", ds.getNewLogLevel())
 						.buffer(1000)
 						.retry(20)
 						.blockLast(Duration.ofMinutes(10));
 			} else {
 				DocTemplate docTemplate = DocTemplateFactory.getDocTemplate(ds);
-				results = docsToUpsert.publishOn(Schedulers
+				docsToUpsert.publishOn(Schedulers
 						.newBoundedElastic(nThreads, 100, "catapult-create"))
 						.flatMap(key -> rcollection.upsert(key, getObject(key, docTemplate, elasticMap),
 								upsertOptions().expiry(Duration.ofSeconds(ds.get_expiry()))))
+						.log("", ds.getNewLogLevel())
 						.buffer(1000)
 						// Num retries
 						.retry(20)
 						// Block until last value, complete or timeout expiry
 						.blockLast(Duration.ofMinutes(10));
 			}
-			// print results
-			if (ds.isOutput()) {
-				System.out.println("Insert results");
-				FileUtils.printMutationResults(results, log);
-			}
 		} catch (Throwable err) {
-			log.error(err);
+			log.error(err.toString());
 		}
 		log.info("Completed upsert");
 	}
 
 	private JsonObject getObject(String key, DocTemplate docTemplate, Map<String, String> elasticMap) {
+		
 		JsonObject obj = docTemplate.createJsonObject(ds.faker, ds.get_size(), extractId(key));
 		elasticMap.put(key, obj.toString());
 		return obj;

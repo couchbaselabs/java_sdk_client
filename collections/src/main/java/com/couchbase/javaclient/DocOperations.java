@@ -85,10 +85,10 @@ public class DocOperations {
 				.help("Elastic instance user login");
 		parser.addArgument("-es_password", "--elastic_password").type(String.class).setDefault("")
 				.help("Elastic instance password");
-
 		// DEBUG < INFO < WARN < ERROR < FATAL < OFF
-		parser.addArgument("-log_level", "--log_level").type(String.class).setDefault("INFO").help("Log level. Levels can be: DEBUG < INFO < WARN < ERROR < FATAL < OFF");
-
+		parser.addArgument("-log_level", "--log_level").type(String.class)
+				.choices("DEBUG", "INFO", "WARN", "ERROR", "FATAL", "OFF").setDefault("INFO")
+				.help("Log level. Levels can be: DEBUG < INFO < WARN < ERROR < FATAL < OFF");
 		parser.addArgument("-output", "--output").type(Boolean.class).setDefault(Boolean.FALSE)
 				.help("Output to console of upsert results");
 
@@ -103,11 +103,8 @@ public class DocOperations {
 
 	private static void run(Namespace ns) {
 		String logLevel = ns.getString("log_level");
-		try {
-			Logger.getRootLogger().setLevel(Level.toLevel(logLevel, Level.INFO));
-		} catch (Exception e) {
-			log.warn("Unknown log level [" + logLevel + "]. Use INFO by default.");
-		}
+		Logger.getRootLogger().setLevel(Level.toLevel(logLevel, Level.INFO));
+		
 		String clusterName = ns.getString("cluster");
 		String username = ns.getString("username");
 		String password = ns.getString("password");
@@ -133,7 +130,7 @@ public class DocOperations {
 				.dataFile(preparedDataFile).shuffleDocs(ns.getBoolean("shuffle_docs"))
 				.setElasticSync(ns.getBoolean("elastic_sync")).setElasticIP(ns.getString("elastic_host"))
 				.setElasticPort(ns.getString("elastic_port")).setElasticLogin(ns.getString("elastic_login"))
-				.setElasticPassword(ns.getString("elastic_password")).setOutput(ns.getBoolean("output"))
+				.setElasticPassword(ns.getString("elastic_password")).setOutput(ns.getBoolean("output"), logLevel)
 				.fieldsToUpdate(fieldsToUpdate).buildDocSpec();
 
 		if (ns.getBoolean("loop_forever")) {

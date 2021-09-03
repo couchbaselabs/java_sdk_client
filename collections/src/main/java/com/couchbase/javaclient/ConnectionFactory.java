@@ -8,8 +8,9 @@ import com.couchbase.client.java.Cluster;
 import com.couchbase.client.java.ClusterOptions;
 import com.couchbase.client.java.Collection;
 import com.couchbase.client.java.env.ClusterEnvironment;
+import com.couchbase.client.core.env.CoreEnvironment.Builder;
 import com.couchbase.client.core.env.*;
-import com.couchbase.client.core.endpoint.CircuitBreakerConfig;
+import com.couchbase.client.core.deps.io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
@@ -23,10 +24,10 @@ public class ConnectionFactory {
 	private Bucket bucket;
 	private Collection collection;
 
-	public ConnectionFactory(String clusterName, String username, String password, String bucketName, String scopeName,
+	public ConnectionFactory(String clusterName, String username, String password, boolean secureConnection, String bucketName, String scopeName,
 			String collectionName, Level logLevel) {
 		log.setLevel(logLevel);
-		this.setCluster(connectCluster(clusterName, username, password));
+		this.setCluster(connectCluster(clusterName, username, password, secureConnection));
 		this.setBucket(connectBucket(cluster, bucketName));
 		this.setCollection(connectCollection(bucket, scopeName, collectionName));
 	}
@@ -40,32 +41,45 @@ public class ConnectionFactory {
 		}
 		return bucket;
 	}
-
-	private Cluster connectCluster(String clusterName, String username, String password) {
+	
+	
+	private Cluster connectCluster(String clusterName, String username, String password, boolean secureConnection) {
 		try {
-
-			environment = ClusterEnvironment.builder()
-					.compressionConfig(CompressionConfig.create().enable(true))
-					.timeoutConfig(TimeoutConfig
-							.kvTimeout(Duration.ofSeconds(60))
-							.queryTimeout(Duration.ofSeconds(100))
-							.searchTimeout(Duration.ofSeconds(100))
-							.analyticsTimeout(Duration.ofSeconds(100)))
-							.ioConfig(IoConfig.numKvConnections(2))
-//							.volumeThreshold(20).errorThresholdPercentage(50).sleepWindow(Duration.ofSeconds(5))
-//							.rollingWindow(Duration.ofMinutes(5))))
-					.build();
-
+			if (secureConnection) {
+				//TODO: root, x509 cert
+				environment = ClusterEnvironment.builder()
+						.compressionConfig(CompressionConfig.create().enable(true))
+						.timeoutConfig(TimeoutConfig
+								.kvTimeout(Duration.ofSeconds(60))
+								.queryTimeout(Duration.ofSeconds(100))
+								.searchTimeout(Duration.ofSeconds(100))
+								.analyticsTimeout(Duration.ofSeconds(100)))
+								.ioConfig(IoConfig.numKvConnections(2))
+								.securityConfig(SecurityConfig.enableTls(true)
+										.trustManagerFactory(InsecureTrustManagerFactory.INSTANCE))							
+						.build();
+			} else {
+				environment = ClusterEnvironment.builder()
+						.compressionConfig(CompressionConfig.create().enable(true))
+						.timeoutConfig(TimeoutConfig
+								.kvTimeout(Duration.ofSeconds(60))
+								.queryTimeout(Duration.ofSeconds(100))
+								.searchTimeout(Duration.ofSeconds(100))
+								.analyticsTimeout(Duration.ofSeconds(100)))
+								.ioConfig(IoConfig.numKvConnections(2))
+						.build();
+			}
+			cluster = Cluster.connect(clusterName,
+					ClusterOptions.clusterOptions(username, password).environment(environment));
+			cluster.waitUntilReady(Duration.ofSeconds(60));
 			environment.eventBus().subscribe(event -> {
 				if (event.severity() == Event.Severity.ERROR) {
 					log.error("Hit unrecoverable error..exiting \n" + event);
 					System.exit(1);
 				}
 			});
-			cluster = Cluster.connect(clusterName,
-					ClusterOptions.clusterOptions(username, password).environment(environment));
 		} catch (Exception ex) {
-			this.handleException("Cannot connect to cluster" + clusterName + "\n" + ex);
+			this.handleException("Cannot connect to cluster " + clusterName + "\n" + ex);
 		}
 		return cluster;
 	}

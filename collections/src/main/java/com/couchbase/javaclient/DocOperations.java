@@ -36,6 +36,7 @@ public class DocOperations {
 		parser.addArgument("-i", "--cluster").required(true).help("Couchbase cluster address");
 		parser.addArgument("-u", "--username").setDefault("Administrator").help("Username of Couchbase user");
 		parser.addArgument("-p", "--password").setDefault("password").help("Password of Couchbase user");
+		parser.addArgument("-secure", "--secure").type(Boolean.class).setDefault(Boolean.FALSE).help("Use https and enable TLS");
 		parser.addArgument("-b", "--bucket").setDefault("default").help("Name of existing Couchbase bucket");
 		parser.addArgument("-s", "--scope").setDefault("_default").help("Name of existing scope");
 		parser.addArgument("-c", "--collection").setDefault("default").help("Name of existing collection");
@@ -108,6 +109,7 @@ public class DocOperations {
 		String clusterName = ns.getString("cluster");
 		String username = ns.getString("username");
 		String password = ns.getString("password");
+		boolean secureConnection = ns.getBoolean("secure");
 		String bucketName = ns.getString("bucket");
 		String scopeName = ns.getString("scope");
 		String collectionName = ns.getString("collection");
@@ -118,7 +120,7 @@ public class DocOperations {
 		String preparedDataFile = FileUtils.getDataFilePrepared(docTemplate, lang);
 		List<String> fieldsToUpdate = Arrays.asList(fieldsToUpdateStr.split(","));
 
-		ConnectionFactory connection = new ConnectionFactory(clusterName, username, password, bucketName, scopeName,
+		ConnectionFactory connection = new ConnectionFactory(clusterName, username, password, secureConnection, bucketName, scopeName,
 				collectionName, Level.toLevel(logLevel, Level.INFO));
 		Bucket bucket = connection.getBucket();
 		Collection collection = connection.getCollection();

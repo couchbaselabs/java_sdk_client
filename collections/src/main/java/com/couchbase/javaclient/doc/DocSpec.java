@@ -27,12 +27,13 @@ public class DocSpec {
 	private boolean output;
 	private String loglevel;
 	List<String> _fieldsToUpdate;
+	private boolean useTransactions;
 	public static Faker faker = new Faker();
 
 	public DocSpec(int _num_ops, int _percent_create, int _percent_update, int _percent_delete, int _startSeqNum,
 			String _prefix, String _suffix, String _template, int _expiry, int _size, int _start,
 			int _end, String _dataFile, boolean _shuffle_docs, boolean isElasticSync, String elasticIP, 
-			String elasticPort, String elasticLogin, String elasticPassword, boolean output, String loglevel, List<String> _fieldsToUpdate) {
+			String elasticPort, String elasticLogin, String elasticPassword, boolean output, String loglevel, List<String> _fieldsToUpdate, boolean useTransactions) {
 		this._num_ops = _num_ops;
 		this._percent_create = _percent_create;
 		this._percent_update = _percent_update;
@@ -55,6 +56,7 @@ public class DocSpec {
 		this.output = output; 
 		this.loglevel = loglevel;
 		this._fieldsToUpdate = _fieldsToUpdate;
+		this.useTransactions = useTransactions;
 	}
 
 	public int get_num_ops() {
@@ -204,6 +206,8 @@ public class DocSpec {
 	public boolean isOutput() {
 		return output;
 	}
+
+	public boolean getUseTransactions() { return useTransactions; }
 
 	public void setOutput(boolean output) {
 		this.output = output;

@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.couchbase.client.java.Bucket;
+import com.couchbase.client.java.Cluster;
 import com.couchbase.client.java.Collection;
 import com.couchbase.client.java.ReactiveCollection;
 import com.couchbase.client.java.codec.RawBinaryTranscoder;
@@ -21,6 +22,9 @@ import com.couchbase.client.java.manager.collection.ScopeSpec;
 import com.couchbase.javaclient.doc.*;
 import com.couchbase.javaclient.utils.FileUtils;
 
+import com.couchbase.javaclient.utils.TransactionsUtil;
+import com.couchbase.transactions.TransactionGetResult;
+import com.couchbase.transactions.Transactions;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 import java.util.logging.Level;
@@ -32,6 +36,7 @@ public class DocUpdate implements Callable<String> {
 	private final static Logger log = Loggers.getLogger(DocUpdate.class);
 
 	private static DocSpec ds;
+	private static Cluster cluster;
 	private static Bucket bucket;
 	private static Collection collection;
 	private static int nThreads; 
@@ -39,13 +44,15 @@ public class DocUpdate implements Callable<String> {
 	private boolean done = false;
 	private Map<String, String> elasticMap = new HashMap<>();
 
-	public DocUpdate(DocSpec _ds, Bucket _bucket, int _nThreads) {
+	public DocUpdate(DocSpec _ds, Cluster _cluster , Bucket _bucket, int _nThreads) {
+		cluster= _cluster;
 		ds = _ds;
 		bucket = _bucket;
 		nThreads = _nThreads;
 	}
 
-	public DocUpdate(DocSpec _ds, Collection _collection, int _nThreads) {
+	public DocUpdate(DocSpec _ds, Cluster _cluster , Collection _collection, int _nThreads) {
+		cluster= _cluster;
 		ds = _ds;
 		collection = _collection;
 		nThreads = _nThreads;
@@ -99,7 +106,19 @@ public class DocUpdate implements Callable<String> {
 		}
 		List<MutationResult> results;	
 		try {
-			if ("Binary".equals(ds.get_template())) {
+			if(ds.getUseTransactions()){
+				log.info("Using Transactions for DocUpdate");
+				Transactions transactions =  TransactionsUtil.getDefaultTransactionsFactory(cluster);
+
+				Flux<String> finalDocsToUpdate = docsToUpdate;
+				transactions.run(ctx->{
+					finalDocsToUpdate.collectList().block().forEach(key -> {
+						TransactionGetResult getResult = ctx.get(collection, key);
+						ctx.replace(getResult,TransactionsUtil.updated);
+					});
+				});
+				transactions.close();
+			}else if ("Binary".equals(ds.get_template())) {
 				results = docsToUpdate.publishOn(Schedulers
 						// Num threads, items in queue, thread name prefix
 						.newBoundedElastic(nThreads, 100, "catapult-update"))

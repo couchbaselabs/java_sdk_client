@@ -25,6 +25,7 @@ public class DocSpecBuilder {
 	boolean output;
 	String loglevel;
 	List<String> fieldsToUpdate;
+	boolean useTransactions;
 
 	public DocSpecBuilder() {
 	}
@@ -32,7 +33,7 @@ public class DocSpecBuilder {
 	public DocSpec buildDocSpec() {
 		return new DocSpec(_num_ops, _percent_create, _percent_update, _percent_delete, _startSeqNum,
 				_prefix, _suffix, _template, _expiry, _size, _start, _end, _dataFile, _shuffleDocs, isElasticSync,
-				elasticIP, elasticPort, elasticLogin, elasticPassword, output, loglevel, fieldsToUpdate);
+				elasticIP, elasticPort, elasticLogin, elasticPassword, output, loglevel, fieldsToUpdate,useTransactions);
 	}
 
 	public DocSpecBuilder numOps(int _num_ops) {
@@ -138,6 +139,12 @@ public class DocSpecBuilder {
 		} else {
 			this.loglevel = loglevel;
 		}
+		return this;
+	}
+
+
+	public DocSpecBuilder setUseTransactions(boolean useTransactions){
+		this.useTransactions = useTransactions;
 		return this;
 	}
 

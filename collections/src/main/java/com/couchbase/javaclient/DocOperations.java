@@ -8,6 +8,7 @@ import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.TimeUnit;
 
 import com.couchbase.client.java.Bucket;
+import com.couchbase.client.java.Cluster;
 import com.couchbase.client.java.Collection;
 import com.couchbase.javaclient.doc.DocSpec;
 import com.couchbase.javaclient.doc.DocSpecBuilder;
@@ -23,6 +24,7 @@ import net.sourceforge.argparse4j.inf.ArgumentParserException;
 import net.sourceforge.argparse4j.inf.Namespace;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+import reactor.util.annotation.Nullable;
 
 public class DocOperations {
 
@@ -65,6 +67,8 @@ public class DocOperations {
 				.help("Sleep interval between loops in seconds");
 
 		// Doc params
+		parser.addArgument("-txn", "--useTransactions").type(Boolean.class).setDefault(Boolean.FALSE)
+				.help("If true, then uses transactions to load documents");
 		parser.addArgument("-dsn", "--start_seq_num").type(Integer.class).setDefault(1)
 				.help("Doc id start sequence number");
 		parser.addArgument("-dpx", "--prefix").setDefault("doc_").help("Doc id prefix");
@@ -122,6 +126,7 @@ public class DocOperations {
 
 		ConnectionFactory connection = new ConnectionFactory(clusterName, username, password, secureConnection, bucketName, scopeName,
 				collectionName, Level.toLevel(logLevel, Level.INFO));
+		Cluster cluster = connection.getCluster();
 		Bucket bucket = connection.getBucket();
 		Collection collection = connection.getCollection();
 
@@ -133,13 +138,14 @@ public class DocOperations {
 				.setElasticSync(ns.getBoolean("elastic_sync")).setElasticIP(ns.getString("elastic_host"))
 				.setElasticPort(ns.getString("elastic_port")).setElasticLogin(ns.getString("elastic_login"))
 				.setElasticPassword(ns.getString("elastic_password")).setOutput(ns.getBoolean("output"), logLevel)
-				.fieldsToUpdate(fieldsToUpdate).buildDocSpec();
+				.fieldsToUpdate(fieldsToUpdate)
+				.setUseTransactions(ns.getBoolean("useTransactions")).buildDocSpec();
 
 		if (ns.getBoolean("loop_forever")) {
 			log.info("Loop forever");
 			while (true) {
 				try {
-					spawnTasks(dSpec, ns.getBoolean("all_collections"), bucket, collection, ns.getInt("num_threads"));
+					spawnTasks(dSpec, ns.getBoolean("all_collections"),cluster, bucket, collection, ns.getInt("num_threads"));
 					TimeUnit.SECONDS.sleep(ns.getInt("loop_interval"));
 				} catch (Exception e) {
 					log.error(e);
@@ -147,7 +153,7 @@ public class DocOperations {
 			}
 		} else {
 			try {
-				spawnTasks(dSpec, ns.getBoolean("all_collections"), bucket, collection, ns.getInt("num_threads"));
+				spawnTasks(dSpec, ns.getBoolean("all_collections"), cluster,bucket, collection, ns.getInt("num_threads"));
 			} catch (Exception e) {
 				log.error(e);
 				connection.close();
@@ -158,8 +164,8 @@ public class DocOperations {
 		System.exit(0);
 	}
 
-	private static void spawnTasks(DocSpec dSpec, Boolean all_collections, 
-			Bucket bucket, Collection collection, int nThreads) {
+	private static void spawnTasks(DocSpec dSpec, Boolean all_collections, Cluster cluster,
+								   Bucket bucket, Collection collection, int nThreads) {
 		ForkJoinTask<String> create = null;
 		ForkJoinTask<String> update = null;
 		ForkJoinTask<String> delete = null;
@@ -167,16 +173,17 @@ public class DocOperations {
 		ForkJoinPool pool = new ForkJoinPool();
 
 		if (all_collections) {
-			create = ForkJoinTask.adapt(new DocCreate(dSpec, bucket, nThreads));
-			update = ForkJoinTask.adapt(new DocUpdate(dSpec, bucket, nThreads));
-			delete = ForkJoinTask.adapt(new DocDelete(dSpec, bucket, nThreads));
-			retrieve = ForkJoinTask.adapt(new DocRetrieve(dSpec, bucket, nThreads));
+			create = ForkJoinTask.adapt(new DocCreate(dSpec, cluster, bucket, nThreads));
+			update = ForkJoinTask.adapt(new DocUpdate(dSpec, cluster, bucket, nThreads));
+			delete = ForkJoinTask.adapt(new DocDelete(dSpec, cluster, bucket, nThreads));
+			retrieve = ForkJoinTask.adapt(new DocRetrieve(dSpec, cluster, bucket, nThreads));
 		} else {
-			create = ForkJoinTask.adapt(new DocCreate(dSpec, collection, nThreads));
-			update = ForkJoinTask.adapt(new DocUpdate(dSpec, collection, nThreads));
-			delete = ForkJoinTask.adapt(new DocDelete(dSpec, collection, nThreads));
-			retrieve = ForkJoinTask.adapt(new DocRetrieve(dSpec, collection, nThreads));
+			create = ForkJoinTask.adapt(new DocCreate(dSpec, cluster, collection, nThreads));
+			update = ForkJoinTask.adapt(new DocUpdate(dSpec, cluster, collection, nThreads));
+			delete = ForkJoinTask.adapt(new DocDelete(dSpec, cluster, collection, nThreads));
+			retrieve = ForkJoinTask.adapt(new DocRetrieve(dSpec, cluster, collection, nThreads));
 		}
+
 		bucket.waitUntilReady(Duration.ofSeconds(30));
 		if (dSpec.get_percent_create() > 0) {
 			log.info("Invoke create");

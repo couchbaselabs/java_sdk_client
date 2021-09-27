@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 import com.couchbase.client.java.Bucket;
+import com.couchbase.client.java.Cluster;
 import com.couchbase.client.java.Collection;
 import com.couchbase.client.java.ReactiveCollection;
 import com.couchbase.client.java.kv.MutationResult;
@@ -17,6 +18,9 @@ import com.couchbase.client.java.manager.collection.ScopeSpec;
 import com.couchbase.javaclient.doc.DocSpec;
 
 import com.couchbase.javaclient.utils.FileUtils;
+import com.couchbase.javaclient.utils.TransactionsUtil;
+import com.couchbase.transactions.TransactionGetResult;
+import com.couchbase.transactions.Transactions;
 import reactor.util.Logger;
 import reactor.util.Loggers;
 import java.util.logging.Level;
@@ -29,6 +33,7 @@ public class DocDelete implements Callable<String> {
 	private final static Logger log = Loggers.getLogger(DocDelete.class);
 
 	private static DocSpec ds;
+	private static Cluster cluster;
 	private static Bucket bucket;
 	private static Collection collection;
 	private static int nThreads; 
@@ -36,13 +41,15 @@ public class DocDelete implements Callable<String> {
 	private boolean done = false;
 	private Map<String, String> elasticMap = new HashMap<>();
 
-	public DocDelete(DocSpec _ds, Bucket _bucket, int _nThreads) {
+	public DocDelete(DocSpec _ds, Cluster _cluster , Bucket _bucket, int _nThreads) {
+		cluster= _cluster;
 		ds = _ds;
 		bucket = _bucket;
 		nThreads = _nThreads;
 	}
 
-	public DocDelete(DocSpec _ds, Collection _collection, int _nThreads) {
+	public DocDelete(DocSpec _ds,  Cluster _cluster ,Collection _collection, int _nThreads) {
+		cluster= _cluster;
 		ds = _ds;
 		collection = _collection;
 		nThreads = _nThreads;
@@ -96,15 +103,30 @@ public class DocDelete implements Callable<String> {
 		}
 		List<MutationResult> results;
 		try {
-			results = docsToDelete.publishOn(Schedulers
-					.newBoundedElastic(nThreads, 100, "catapult-delete"))
-					.flatMap(id -> wrap(rcollection, id, elasticMap))
-					.log("", ds.getNewLogLevel())
-					.buffer(1000)
-					// Num retries
-					.retry(20)
-					// Block until last value, complete or timeout expiry
-					.blockLast(Duration.ofMinutes(10));
+			if(ds.getUseTransactions()){
+				log.info("Using Transactions for DocDelete");
+				Transactions transactions =  TransactionsUtil.getDefaultTransactionsFactory(cluster);
+
+				Flux<String> finaldocsToDelete = docsToDelete;
+				transactions.run(ctx->{
+					finaldocsToDelete.collectList().block().forEach(key -> {
+						TransactionGetResult getResult = ctx.get(collection, key);
+						ctx.remove(getResult);
+					});
+				});
+				transactions.close();
+			}else
+			{
+				results = docsToDelete.publishOn(Schedulers
+						.newBoundedElastic(nThreads, 100, "catapult-delete"))
+						.flatMap(id -> wrap(rcollection, id, elasticMap))
+						.log("", ds.getNewLogLevel())
+						.buffer(1000)
+						// Num retries
+						.retry(20)
+						// Block until last value, complete or timeout expiry
+						.blockLast(Duration.ofMinutes(10));
+			}
 		} catch (Exception err) {
 			log.error(err.toString());
 		}

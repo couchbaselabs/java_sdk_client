@@ -96,6 +96,7 @@ public class DocOperations {
 				.help("Log level. Levels can be: DEBUG < INFO < WARN < ERROR < FATAL < OFF");
 		parser.addArgument("-output", "--output").type(Boolean.class).setDefault(Boolean.FALSE)
 				.help("Output to console of upsert results");
+		parser.addArgument("-cpl", "--capella").type(Boolean.class).setDefault(Boolean.FALSE);
 
 		try {
 			Namespace ns = parser.parseArgs(args);
@@ -123,8 +124,9 @@ public class DocOperations {
 		String docTemplate = ns.getString("template");
 		String preparedDataFile = FileUtils.getDataFilePrepared(docTemplate, lang);
 		List<String> fieldsToUpdate = Arrays.asList(fieldsToUpdateStr.split(","));
-
-		ConnectionFactory connection = new ConnectionFactory(clusterName, username, password, secureConnection, bucketName, scopeName,
+		boolean capella =  ns.getBoolean("capella");
+		log.info("Capella:"+capella);
+		ConnectionFactory connection = new ConnectionFactory(clusterName, username, password, secureConnection, capella, bucketName, scopeName,
 				collectionName, Level.toLevel(logLevel, Level.INFO));
 		Cluster cluster = connection.getCluster();
 		Bucket bucket = connection.getBucket();

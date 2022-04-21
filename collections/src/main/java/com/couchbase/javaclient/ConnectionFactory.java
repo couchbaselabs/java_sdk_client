@@ -24,10 +24,10 @@ public class ConnectionFactory {
 	private Bucket bucket;
 	private Collection collection;
 
-	public ConnectionFactory(String clusterName, String username, String password, boolean secureConnection, String bucketName, String scopeName,
+	public ConnectionFactory(String clusterName, String username, String password, boolean secureConnection, boolean capella,String bucketName, String scopeName,
 			String collectionName, Level logLevel) {
 		log.setLevel(logLevel);
-		this.setCluster(connectCluster(clusterName, username, password, secureConnection));
+		this.setCluster(connectCluster(clusterName, username, password, secureConnection,capella));
 		this.setBucket(connectBucket(cluster, bucketName));
 		this.setCollection(connectCollection(bucket, scopeName, collectionName));
 	}
@@ -43,9 +43,27 @@ public class ConnectionFactory {
 	}
 	
 	
-	private Cluster connectCluster(String clusterName, String username, String password, boolean secureConnection) {
+	private Cluster connectCluster(String clusterName, String username, String password, boolean secureConnection,boolean capella) {
 		try {
-			if (secureConnection) {
+			if(capella){
+				environment = ClusterEnvironment.builder()
+						.compressionConfig(CompressionConfig.create().enable(true))
+						.timeoutConfig(TimeoutConfig
+								.kvTimeout(Duration.ofSeconds(60))
+								.queryTimeout(Duration.ofSeconds(100))
+								.searchTimeout(Duration.ofSeconds(100))
+								.analyticsTimeout(Duration.ofSeconds(100)))
+						.securityConfig(SecurityConfig.enableTls(true)
+								.trustManagerFactory(InsecureTrustManagerFactory.INSTANCE))
+						.ioConfig(IoConfig.numKvConnections(2)
+								.enableDnsSrv(true))
+						.build();
+
+				// Initialize the Connection
+				cluster = Cluster.connect(clusterName,
+						ClusterOptions.clusterOptions(username, password).environment(environment));
+
+			}else if (secureConnection) {
 				//TODO: root, x509 cert
 				environment = ClusterEnvironment.builder()
 						.compressionConfig(CompressionConfig.create().enable(true))
@@ -54,8 +72,8 @@ public class ConnectionFactory {
 								.queryTimeout(Duration.ofSeconds(100))
 								.searchTimeout(Duration.ofSeconds(100))
 								.analyticsTimeout(Duration.ofSeconds(100)))
-								.ioConfig(IoConfig.numKvConnections(2))
-								.securityConfig(SecurityConfig.enableTls(true)
+						.ioConfig(IoConfig.numKvConnections(2))
+						.securityConfig(SecurityConfig.enableTls(true)
 										.trustManagerFactory(InsecureTrustManagerFactory.INSTANCE))							
 						.build();
 			} else {
@@ -66,7 +84,7 @@ public class ConnectionFactory {
 								.queryTimeout(Duration.ofSeconds(100))
 								.searchTimeout(Duration.ofSeconds(100))
 								.analyticsTimeout(Duration.ofSeconds(100)))
-								.ioConfig(IoConfig.numKvConnections(2))
+						.ioConfig(IoConfig.numKvConnections(2))
 						.build();
 			}
 			cluster = Cluster.connect(clusterName,

@@ -178,12 +178,10 @@ public class DocOperations {
 			create = ForkJoinTask.adapt(new DocCreate(dSpec, cluster, bucket, nThreads));
 			update = ForkJoinTask.adapt(new DocUpdate(dSpec, cluster, bucket, nThreads));
 			delete = ForkJoinTask.adapt(new DocDelete(dSpec, cluster, bucket, nThreads));
-			retrieve = ForkJoinTask.adapt(new DocRetrieve(dSpec, cluster, bucket, nThreads));
 		} else {
 			create = ForkJoinTask.adapt(new DocCreate(dSpec, cluster, collection, nThreads));
 			update = ForkJoinTask.adapt(new DocUpdate(dSpec, cluster, collection, nThreads));
 			delete = ForkJoinTask.adapt(new DocDelete(dSpec, cluster, collection, nThreads));
-			retrieve = ForkJoinTask.adapt(new DocRetrieve(dSpec, cluster, collection, nThreads));
 		}
 
 		bucket.waitUntilReady(Duration.ofSeconds(30));
@@ -199,7 +197,6 @@ public class DocOperations {
 			log.info("Invoke delete");
 			pool.invoke(delete);
 		}
-		pool.invoke(retrieve);
 		pool.shutdownNow();
 	}
 

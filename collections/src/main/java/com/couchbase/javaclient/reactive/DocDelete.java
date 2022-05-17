@@ -125,7 +125,7 @@ public class DocDelete implements Callable<String> {
 						// Num retries
 						.retry(20)
 						// Block until last value, complete or timeout expiry
-						.blockLast(Duration.ofMinutes(10));
+						.blockLast(Duration.ofSeconds(1000));
 			}
 		} catch (Exception err) {
 			log.error(err.toString());

@@ -129,7 +129,7 @@ public class DocUpdate implements Callable<String> {
 						.log("", ds.getNewLogLevel())
 						.buffer(1000)
 						.retry(20)
-						.blockLast(Duration.ofMinutes(10));
+						.blockLast(Duration.ofSeconds(1000));
 			} else {
 				DocTemplate docTemplate = DocTemplateFactory.getDocTemplate(ds);
 				results = docsToUpdate.publishOn(Schedulers
@@ -141,7 +141,7 @@ public class DocUpdate implements Callable<String> {
 						// Num retries
 						.retry(20)
 						// Block until last value, complete or timeout expiry
-						.blockLast(Duration.ofMinutes(10));
+						.blockLast(Duration.ofSeconds(1000));
 			}
 		} catch (Throwable e) {
 			log.error(e.toString());

@@ -184,7 +184,8 @@ public class DocOperations {
 			delete = ForkJoinTask.adapt(new DocDelete(dSpec, cluster, collection, nThreads));
 		}
 
-		bucket.waitUntilReady(Duration.ofSeconds(30));
+		// TODO: Enable again when JVMCBC-1147 fixed
+		// bucket.waitUntilReady(Duration.ofSeconds(30));
 		if (dSpec.get_percent_create() > 0) {
 			log.info("Invoke create");
 			pool.invoke(create);

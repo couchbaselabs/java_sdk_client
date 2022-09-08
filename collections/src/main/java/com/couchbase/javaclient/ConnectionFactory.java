@@ -35,7 +35,8 @@ public class ConnectionFactory {
 	private Bucket connectBucket(Cluster cluster, String bucketName) {
 		try {
 			bucket = cluster.bucket(bucketName);
-			bucket.waitUntilReady(Duration.ofSeconds(60));
+			// TODO: Enable again when JVMCBC-1147 fixed
+			// bucket.waitUntilReady(Duration.ofSeconds(60));
 		} catch (Exception ex) {
 			this.handleException("Cannot connect to bucket " + bucketName + "\n" + ex);
 		}
@@ -89,7 +90,8 @@ public class ConnectionFactory {
 			}
 			cluster = Cluster.connect(clusterName,
 					ClusterOptions.clusterOptions(username, password).environment(environment));
-			cluster.waitUntilReady(Duration.ofSeconds(60));
+			// TODO: Enable again when JVMCBC-1147 fixed
+			// cluster.waitUntilReady(Duration.ofSeconds(60));
 			environment.eventBus().subscribe(event -> {
 				if (event.severity() == Event.Severity.ERROR) {
 					log.error("Hit unrecoverable error..exiting \n" + event);

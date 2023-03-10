@@ -47,6 +47,11 @@ public class Emp implements DocTemplate{
             "Arabic", "Africans", "Hindi", "Vietnamese", "Urdu", "Dutch",
             "Quechua", "Japanese", "Chinese", "Nepalese", "Thai", "Malay",
             "Sinhalese", "Portuguese", "Romanian"};
+    private final static String[] IP = {
+            "11.22.33.44", "1.2.3.4.5", "257.23.32.214", "1.257.33.4",
+            "1.2.3.400000000", "01.01.01.01", "0.52.34.64", "1:2:3:4:5:6:7:8", "1:2:3:4:5:6:7:8:9",
+            "6:2:3:4:5:6:7:8", "100:2:3:4:5:6:7:8", "1:2:3:4:5:6:7:00", "1:2:3:4:5:6:7:0", "1:2:3:4:5:6:7:80, 2001:0db8:85a3:0:0:8A2E:0370:7334",
+            "256.256.256.256", "01.01.01.012"};
     Random random = new Random();
 
     public JsonObject createJsonObject(Faker faker, int docsize, int id) {
@@ -62,6 +67,7 @@ public class Emp implements DocTemplate{
         jsonObject.put("is_manager", isManager);
         jsonObject.put("mutated", 0);
         jsonObject.put("type", "emp");
+        jsonObject.put("ip", generateIP());
         if(isManager){
             JsonObject manages = JsonObject.create();
             int teamSize = 5 + random.nextInt(5);
@@ -124,6 +130,8 @@ public class Emp implements DocTemplate{
         res+=LAST_NAMES[random.nextInt(LAST_NAMES.length)];
         return res;
     }
+
+    private String generateIP(){ return IP[random.nextInt(IP.length)]; }
 
     private String generateDept(){
         return DEPT[random.nextInt(DEPT.length)];

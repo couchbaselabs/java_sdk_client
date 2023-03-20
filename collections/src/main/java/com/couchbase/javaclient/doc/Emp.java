@@ -48,15 +48,34 @@ public class Emp implements DocTemplate{
             "Quechua", "Japanese", "Chinese", "Nepalese", "Thai", "Malay",
             "Sinhalese", "Portuguese", "Romanian"};
     private final static String[] IP = {
-            "11.22.33.44", "1.2.3.4.5", "257.23.32.214", "1.257.33.4",
-            "1.2.3.400000000", "01.01.01.01", "0.52.34.64", "1:2:3:4:5:6:7:8", "1:2:3:4:5:6:7:8:9",
-            "6:2:3:4:5:6:7:8", "100:2:3:4:5:6:7:8", "1:2:3:4:5:6:7:00", "1:2:3:4:5:6:7:0", "1:2:3:4:5:6:7:80, 2001:0db8:85a3:0:0:8A2E:0370:7334",
-            "256.256.256.256", "01.01.01.012"};
+            "0.2.3.4", "0.52.34.64", "192.0.2.0", "192.0.2.255", "192.168.5.0", "198.51.100.255", "203.0.113.0",
+            "203.0.113.255", "173.16.0.0", "192.168.0.0", "172.16.0.0", "10.0.0.0", "224.0.0.1", "203.0.113.0.1",
+            "0.52.34.64.2", "192.0.2.256", "300.21.2.257", "257.257.257.256", "0.52.-34.64", "198.51.100.256",
+            "198.51.10#.256", "198.@2.100.256", "001.2.3.4", "00.52.34.64", "00192.168.5.1", "0010.0.0.1", "203.0.113.256",
+            "0.52.34:64", "192:0.2.0", "192.168.:0.0", "192.168.0.256", "172.16.256.1", "224.0.0.256",
+            "2001:0db8:0000:0000:0000:ff00:0042:8329", "2001:db8::1", "2001:db8::2:1", "2001:0db8:85a3::8a2e:0370:7334",
+            "::1", "fe80::1%lo0", "2001:db8:abcd:0012::a00", "fe80::b879:1823:f3c4:4e22%4",
+            "2001:0db8:85a3::8a2e:0370:7334:0.0.0.0", "2001:db8:1:1:1:1:1:1", "2001:db8:1::1:1:1:1", "2001:db8::1",
+            "fe80::1%en0", "fe80::1%lo0", "2001:db8:abcd:0012::0a00", "2001:0db8:0000:0000:0000:ff00:0042:832g",
+            "2001:db8:::1", "fe80:0:0:0:200:ff:fe00:00g", "2001:0db8:85a3::8a2e:0370:7334:0.0.0.0", "2001:db8:1:1:1:1:1:1",
+            "2001:db8:1:1:1:1:1:1", "fe80::1%en0", "192.168.0.256", "172.16.256.1", "224.0.0.256", "ff02::g"
+    };
+
+    private final static String[][] IP_List = {
+            {"172.16.0.0", "172.30.0.0", "172.21.0.0", "172.16.250.0", "173.16.19.250", "172.31.255.255"},
+            {"172.16.0.0", "172.32.0.0", "172.30.0.0", "172.16.250.0", "173.16.0.0", "0.16.0.0", "172.31.255.255"},
+            {"2001:db8::1", "2001:db8::2", "2001:db8::a:b:c:d", "2001:db8:ffff:ffff:ffff:ffff:ffff:fe",
+                    "2001:db8:1:2:3:4:5:6", "173.16.0.0"},
+            {"2001:db8:1:2:3:4:5:6", "2001:db8:0:0:0:0:0:1", "173.16.0.0", "2001:db8:abcd:1234:5678:90ab:cdef:1234",
+                    "2001:db8:ffff:ffff:ffff:ffff:ffff:ffff:ffff", "2001:db8:1234:5678:abcd:ef12:3456:7890:"}
+    };
+
     Random random = new Random();
 
     public JsonObject createJsonObject(Faker faker, int docsize, int id) {
         String empName = generateName();
         boolean isManager = random.nextBoolean();
+        int IP_choice = random.nextInt(2);
         jsonObject.put("name", empName);
         jsonObject.put("emp_id", ""+(10000000+id));
         jsonObject.put("dept", generateDept());
@@ -68,6 +87,16 @@ public class Emp implements DocTemplate{
         jsonObject.put("mutated", 0);
         jsonObject.put("type", "emp");
         jsonObject.put("ip", generateIP());
+        if(IP_choice==0){
+            jsonObject.put("ip", generateIP());
+        }else{
+            String [] ip_array = getIP_List();
+            List<String> ip_list = new ArrayList<>();
+            for(int i =0; i<ip_array.length; i++){
+                ip_list.add(ip_array[i]);
+            }
+            jsonObject.put("ip", ip_list);
+        }
         if(isManager){
             JsonObject manages = JsonObject.create();
             int teamSize = 5 + random.nextInt(5);
@@ -79,7 +108,6 @@ public class Emp implements DocTemplate{
             manages.put("reports", reports);
             jsonObject.put("manages", manages);
         }
-
         return jsonObject;
     }
 
@@ -132,6 +160,8 @@ public class Emp implements DocTemplate{
     }
 
     private String generateIP(){ return IP[random.nextInt(IP.length)]; }
+
+    private String [] getIP_List(){ return IP_List[random.nextInt(IP_List.length)]; }
 
     private String generateDept(){
         return DEPT[random.nextInt(DEPT.length)];

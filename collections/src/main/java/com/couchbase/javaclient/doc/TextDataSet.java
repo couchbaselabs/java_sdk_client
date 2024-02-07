@@ -20,7 +20,7 @@ public class TextDataSet implements DocTemplate {
 
     TextDataSet(DocSpec docSpec) {
         this.dataSetName = docSpec.get_template();
-        readFile(docSpec.getDataFile(), docSpec.get_num_ops());
+        readFile(docSpec.getDataFile(), docSpec.get_num_ops()+docSpec.get_startSeqNum());
     }
 
     protected void parseAndStoreJsonObject(org.json.simple.JSONObject simpleJson){

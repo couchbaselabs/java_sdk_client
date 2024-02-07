@@ -127,6 +127,7 @@ public class DocCreate implements Callable<String> {
 							.blockLast(Duration.ofSeconds(1000));
 				}
 		} catch (Throwable err) {
+			err.printStackTrace();
 			System.out.println("Error "+err.toString());
 			log.error(err.toString());
 		}

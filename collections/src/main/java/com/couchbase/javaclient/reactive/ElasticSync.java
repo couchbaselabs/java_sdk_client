@@ -35,6 +35,7 @@ public final class ElasticSync {
         // auth header
         String token = elasticLogin + ":" + elasticPassword;
         httpPost.addHeader("Authorization", "Basic " + Base64.getEncoder().encodeToString(token.getBytes(StandardCharsets.UTF_8)));
+        httpPost.setHeader("Content-Type", "application/json");
         httpPost.setEntity(new FileEntity(file.getAbsoluteFile()));
 
         //Execute and get the response

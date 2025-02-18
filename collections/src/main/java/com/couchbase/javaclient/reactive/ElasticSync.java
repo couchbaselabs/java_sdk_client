@@ -62,7 +62,6 @@ public final class ElasticSync {
     public static String createElasticObject(String dataset, String id, String operation) {
         return "{\"" + operation + "\": {" +
                 "\"_index\": \"es_index\"," +
-                "\"_type\": \"" + dataset + "\"," +
                 "\"_id\": \"" + id + "\"" +
                 "}}\n";
     }

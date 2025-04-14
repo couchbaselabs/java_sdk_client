@@ -86,10 +86,10 @@ public class DocOperations {
 		parser.addArgument("-es_host", "--elastic_host").type(String.class).setDefault("").help("Elastic instance IP");
 		parser.addArgument("-es_port", "--elastic_port").type(String.class).setDefault("")
 				.help("Elastic instance port");
-		parser.addArgument("-es_login", "--elastic_login").type(String.class).setDefault("")
-				.help("Elastic instance user login");
-		parser.addArgument("-es_password", "--elastic_password").type(String.class).setDefault("")
-				.help("Elastic instance password");
+		// parser.addArgument("-es_login", "--elastic_login").type(String.class).setDefault("")
+		// 		.help("Elastic instance user login");
+		// parser.addArgument("-es_password", "--elastic_password").type(String.class).setDefault("")
+		// 		.help("Elastic instance password");
 		// DEBUG < INFO < WARN < ERROR < FATAL < OFF
 		parser.addArgument("-log_level", "--log_level").type(String.class)
 				.choices("DEBUG", "INFO", "WARN", "ERROR", "FATAL", "OFF").setDefault("INFO")

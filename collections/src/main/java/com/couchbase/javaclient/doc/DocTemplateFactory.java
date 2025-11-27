@@ -12,6 +12,8 @@ public final class DocTemplateFactory {
 			return new Person();
 		}else  if("Hotel".equals(ds.get_template())){
 			return new Hotel();
+		}else  if("hierarchical".equals(ds.get_template()) || "Hierarchical".equals(ds.get_template())){
+			return new Hierarchical();
 		}else {
 			return new TextDataSet(ds);
 		}

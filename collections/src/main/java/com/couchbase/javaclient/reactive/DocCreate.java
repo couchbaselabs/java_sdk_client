@@ -35,7 +35,7 @@ public class DocCreate implements Callable<String> {
 	private static Cluster cluster;
 	private static Bucket bucket;
 	private static Collection collection;
-	private static int nThreads; 
+	private static int nThreads;
 	private static int num_docs = 0;
 	private Map<String, String> elasticMap = new HashMap<>();
 
@@ -81,7 +81,7 @@ public class DocCreate implements Callable<String> {
 			java.util.Collections.shuffle(docs);
 			docsToUpsert = Flux.fromIterable(docs);
 		}
-		
+
 		try {
 			if(ds.getUseTransactions()){
 				log.info("Using Transactions for DocCreate");
@@ -112,7 +112,7 @@ public class DocCreate implements Callable<String> {
 							.log("", ds.getNewLogLevel())
 							.buffer(1000)
 							.retry(20)
-							.blockLast(Duration.ofSeconds(1000));
+							.blockLast(Duration.ofSeconds(7200));
 				} else {
 					DocTemplate docTemplate = DocTemplateFactory.getDocTemplate(ds);
 					docsToUpsert.publishOn(Schedulers
@@ -123,8 +123,8 @@ public class DocCreate implements Callable<String> {
 							.buffer(1000)
 							// Num retries
 							.retry(20)
-							// Block until last value, complete or timeout expiry
-							.blockLast(Duration.ofSeconds(1000));
+							// Block until last value, complete or timeout expiry (increased for large batches)
+							.blockLast(Duration.ofSeconds(7200));
 				}
 		} catch (Throwable err) {
 			err.printStackTrace();
@@ -135,7 +135,7 @@ public class DocCreate implements Callable<String> {
 	}
 
 	private JsonObject getObject(String key, DocTemplate docTemplate, Map<String, String> elasticMap) {
-		
+
 		JsonObject obj = docTemplate.createJsonObject(ds.faker, ds.get_size(), extractId(key));
 		elasticMap.put(key, obj.toString());
 		return obj;

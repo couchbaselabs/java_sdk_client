@@ -14,6 +14,8 @@ public final class DocTemplateFactory {
 			return new Hotel();
 		}else  if("hierarchical".equals(ds.get_template()) || "Hierarchical".equals(ds.get_template())){
 			return new Hierarchical();
+		}else  if("hierarchical_vector".equals(ds.get_template()) || "HierarchicalVector".equals(ds.get_template())){
+			return new HierarchicalVector();
 		}else {
 			return new TextDataSet(ds);
 		}

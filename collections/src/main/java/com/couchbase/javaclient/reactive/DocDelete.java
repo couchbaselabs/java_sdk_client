@@ -36,7 +36,7 @@ public class DocDelete implements Callable<String> {
 	private static Cluster cluster;
 	private static Bucket bucket;
 	private static Collection collection;
-	private static int nThreads; 
+	private static int nThreads;
 	private static int num_docs = 0;
 	private boolean done = false;
 	private Map<String, String> elasticMap = new HashMap<>();
@@ -125,7 +125,7 @@ public class DocDelete implements Callable<String> {
 						// Num retries
 						.retry(20)
 						// Block until last value, complete or timeout expiry
-						.blockLast(Duration.ofSeconds(1000));
+						.blockLast(Duration.ofSeconds(7200));
 			}
 		} catch (Exception err) {
 			log.error(err.toString());

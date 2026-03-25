@@ -62,6 +62,7 @@ public class Hierarchical implements DocTemplate {
         }
 
         doc.put("company", createCompany(faker, id));
+        doc.put("mutationCount", 0);
 
         int currentSize = doc.toString().length();
         if (currentSize < docsize) {
@@ -73,6 +74,9 @@ public class Hierarchical implements DocTemplate {
 
     @Override
     public JsonObject updateJsonObject(Faker faker, JsonObject obj, List<String> fieldsToUpdate) {
+        int currentCount = obj.getInt("mutationCount") != null ? obj.getInt("mutationCount") : 0;
+        obj.put("mutationCount", currentCount + 1);
+
         if (fieldsToUpdate != null && !fieldsToUpdate.isEmpty() && !fieldsToUpdate.get(0).isEmpty()) {
             for (String field : fieldsToUpdate) {
                 if ("company".equals(field)) {

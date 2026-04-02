@@ -103,7 +103,7 @@ public final class FileUtils {
         return localFileName;
     }
 
-    public static List<File> writeForElastic(Map<String, String> objects, String dataset, String operation) {
+    public static List<File> writeForElastic(Map<String, String> objects, String dataset, String operation, String indexName) {
         final List<File> filesList = new ArrayList<>();
         try {
             File elasticFile = null;
@@ -120,7 +120,7 @@ public final class FileUtils {
                     writer = new FileWriter(elasticFile);
                 }
 
-                writer.write(createElasticObject(dataset, id, operation));
+                writer.write(createElasticObject(dataset, id, operation, indexName));
                 if ("update".equals(operation)){
                     writer.write("{ \"doc\" : "+objects.get(id)+" }\n");
                 }

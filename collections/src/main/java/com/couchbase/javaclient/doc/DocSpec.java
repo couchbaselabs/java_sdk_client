@@ -22,6 +22,7 @@ public class DocSpec {
 	boolean isElasticSync;
 	private String elasticIP;
 	private String elasticPort;
+	private String elasticIndex;
 	private String elasticLogin;
 	private String elasticPassword;
 	private boolean output;
@@ -33,7 +34,7 @@ public class DocSpec {
 	public DocSpec(int _num_ops, int _percent_create, int _percent_update, int _percent_delete, int _startSeqNum,
 			String _prefix, String _suffix, String _template, int _expiry, int _size, int _start,
 			int _end, String _dataFile, boolean _shuffle_docs, boolean isElasticSync, String elasticIP, 
-			String elasticPort, String elasticLogin, String elasticPassword, boolean output, String loglevel, List<String> _fieldsToUpdate, boolean useTransactions) {
+			String elasticPort, String elasticIndex, String elasticLogin, String elasticPassword, boolean output, String loglevel, List<String> _fieldsToUpdate, boolean useTransactions) {
 		this._num_ops = _num_ops;
 		this._percent_create = _percent_create;
 		this._percent_update = _percent_update;
@@ -51,6 +52,7 @@ public class DocSpec {
 		this.isElasticSync = isElasticSync;
 		this.setElasticIP(elasticIP);
 		this.setElasticPort(elasticPort);
+		this.setElasticIndex(elasticIndex);
 		this.setElasticLogin(elasticLogin);
 		this.setElasticPassword(elasticPassword);
 		this.output = output; 
@@ -186,6 +188,10 @@ public class DocSpec {
 	public String getElasticPort() { return elasticPort; }
 
 	public void setElasticPort(String elasticPort) { this.elasticPort = elasticPort; }
+
+	public String getElasticIndex() { return elasticIndex; }
+
+	public void setElasticIndex(String elasticIndex) { this.elasticIndex = elasticIndex; }
 
 	public String getElasticLogin() { return elasticLogin; }
 

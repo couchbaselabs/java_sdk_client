@@ -20,6 +20,7 @@ public class DocSpecBuilder {
 	boolean isElasticSync;
 	String elasticIP;
 	String elasticPort;
+	String elasticIndex;
 	String elasticLogin;
 	String elasticPassword;
 	boolean output;
@@ -33,7 +34,7 @@ public class DocSpecBuilder {
 	public DocSpec buildDocSpec() {
 		return new DocSpec(_num_ops, _percent_create, _percent_update, _percent_delete, _startSeqNum,
 				_prefix, _suffix, _template, _expiry, _size, _start, _end, _dataFile, _shuffleDocs, isElasticSync,
-				elasticIP, elasticPort, elasticLogin, elasticPassword, output, loglevel, fieldsToUpdate,useTransactions);
+				elasticIP, elasticPort, elasticIndex, elasticLogin, elasticPassword, output, loglevel, fieldsToUpdate,useTransactions);
 	}
 
 	public DocSpecBuilder numOps(int _num_ops) {
@@ -118,6 +119,11 @@ public class DocSpecBuilder {
 
 	public DocSpecBuilder setElasticPort(String port){
 		this.elasticPort = port;
+		return this;
+	}
+
+	public DocSpecBuilder setElasticIndex(String index){
+		this.elasticIndex = index;
 		return this;
 	}
 

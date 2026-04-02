@@ -69,7 +69,7 @@ public class DocUpdate implements Callable<String> {
 		}
 		// upsert to elastic
 		if (ds.isElasticSync() && !elasticMap.isEmpty()) {
-			final List<File> elasticFiles = FileUtils.writeForElastic(elasticMap, ds.get_template(), "update");
+			final List<File> elasticFiles = FileUtils.writeForElastic(elasticMap, ds.get_template(), "update", ds.getElasticIndex());
 			ElasticSync.syncFiles(ds.getElasticIP(), ds.getElasticPort(), ds.getElasticLogin(), ds.getElasticPassword(), elasticFiles, 5);
 		}
 		done = true;

@@ -66,7 +66,7 @@ public class DocDelete implements Callable<String> {
 		}
 		// delete from elastic
 		if (ds.isElasticSync() && !elasticMap.isEmpty()) {
-			List<File> elasticFiles = FileUtils.writeForElastic(elasticMap, ds.get_template(), "delete");
+			List<File> elasticFiles = FileUtils.writeForElastic(elasticMap, ds.get_template(), "delete", ds.getElasticIndex());
 			ElasticSync.syncFiles(ds.getElasticIP(), ds.getElasticPort(), ds.getElasticLogin(), ds.getElasticPassword(), elasticFiles, 5);
 		}
 		done = true;

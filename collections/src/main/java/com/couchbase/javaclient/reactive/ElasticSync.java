@@ -59,9 +59,10 @@ public final class ElasticSync {
         }
     }
 
-    public static String createElasticObject(String dataset, String id, String operation) {
+    public static String createElasticObject(String dataset, String id, String operation, String indexName) {
+        String esIndexName = (indexName != null && !indexName.isEmpty()) ? indexName : "es_index";
         return "{\"" + operation + "\": {" +
-                "\"_index\": \"es_index\"," +
+                "\"_index\": \"" + esIndexName + "\"," +
                 "\"_id\": \"" + id + "\"" +
                 "}}\n";
     }

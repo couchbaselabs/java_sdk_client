@@ -86,6 +86,8 @@ public class DocOperations {
 		parser.addArgument("-es_host", "--elastic_host").type(String.class).setDefault("").help("Elastic instance IP");
 		parser.addArgument("-es_port", "--elastic_port").type(String.class).setDefault("")
 				.help("Elastic instance port");
+		parser.addArgument("-es_index", "--elastic_index").type(String.class).setDefault("es_index")
+				.help("Elastic index name");
 		// parser.addArgument("-es_login", "--elastic_login").type(String.class).setDefault("")
 		// 		.help("Elastic instance user login");
 		// parser.addArgument("-es_password", "--elastic_password").type(String.class).setDefault("")
@@ -138,7 +140,8 @@ public class DocOperations {
 				.expiry(ns.getInt("expiry")).size(ns.getInt("size")).start(ns.getInt("start")).end(ns.getInt("end"))
 				.dataFile(preparedDataFile).shuffleDocs(ns.getBoolean("shuffle_docs"))
 				.setElasticSync(ns.getBoolean("elastic_sync")).setElasticIP(ns.getString("elastic_host"))
-				.setElasticPort(ns.getString("elastic_port")).setElasticLogin(ns.getString("elastic_login"))
+				.setElasticPort(ns.getString("elastic_port")).setElasticIndex(ns.getString("elastic_index"))
+				.setElasticLogin(ns.getString("elastic_login"))
 				.setElasticPassword(ns.getString("elastic_password")).setOutput(ns.getBoolean("output"), logLevel)
 				.fieldsToUpdate(fieldsToUpdate)
 				.setUseTransactions(ns.getBoolean("useTransactions")).buildDocSpec();

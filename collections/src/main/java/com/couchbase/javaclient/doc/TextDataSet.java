@@ -32,7 +32,19 @@ public class TextDataSet implements DocTemplate {
 
     @Override
     public JsonObject createJsonObject(Faker faker, int docsize, int id) {
-        return records.get(id-1);
+        // DocCreate generates keys with Flux.range(startSeqNum, num_docs), so id
+        // is the absolute sequence number and starts at startSeqNum - 0 for a
+        // default load. readFile() sizes records to num_ops + startSeqNum exactly
+        // so that id indexes it directly; subtracting one asked for
+        // records.get(-1) on the very first document of every run, and returned
+        // the wrong record for every document after it.
+        if (id < 0 || id >= records.size()) {
+            throw new IllegalStateException("No record for doc id " + id
+                    + ": dataset '" + dataSetName + "' holds " + records.size()
+                    + " records. Check the data file has at least "
+                    + "num_ops + startSeqNum parseable lines.");
+        }
+        return records.get(id);
     }
 
     @Override
@@ -64,6 +76,13 @@ public class TextDataSet implements DocTemplate {
             }
         } catch (IOException e) {
             log.error(e);
+        }
+        if (records.isEmpty()) {
+            // Nothing parsed - the padding loop below would itself throw on
+            // records.get(0). Say why instead.
+            log.error("No records parsed from " + path + " (" + count
+                    + " unparseable lines); cannot pad to " + numOps);
+            return;
         }
         int i = 0;
         while (records.size() < numOps) {

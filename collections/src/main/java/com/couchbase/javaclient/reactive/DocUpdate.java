@@ -7,15 +7,14 @@ import java.time.Duration;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.concurrent.Callable;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.Cluster;
 import com.couchbase.client.java.Collection;
 import com.couchbase.client.java.ReactiveCollection;
 import com.couchbase.client.java.codec.RawBinaryTranscoder;
-import com.couchbase.client.java.json.JsonObject;
 import com.couchbase.client.java.kv.MutationResult;
 import com.couchbase.client.java.manager.collection.CollectionSpec;
 import com.couchbase.client.java.manager.collection.ScopeSpec;
@@ -42,7 +41,8 @@ public class DocUpdate implements Callable<String> {
 	private static int nThreads;
 	private static int num_docs = 0;
 	private boolean done = false;
-	private Map<String, String> elasticMap = new HashMap<>();
+	// Written from every thread of the update pipeline, so it cannot be a HashMap.
+	private Map<String, String> elasticMap = new ConcurrentHashMap<>();
 
 	public DocUpdate(DocSpec _ds, Cluster _cluster , Bucket _bucket, int _nThreads) {
 		cluster= _cluster;
@@ -132,10 +132,21 @@ public class DocUpdate implements Callable<String> {
 						.blockLast(Duration.ofSeconds(7200));
 			} else {
 				DocTemplate docTemplate = DocTemplateFactory.getDocTemplate(ds);
+				// Read the existing doc through the reactive collection so the get
+				// joins the async pipeline. This used to call the blocking
+				// collection.get(key) from inside flatMap, which parked one of the
+				// scheduler's nThreads (default 4) for every document: updating
+				// 100k docs took over 1000s and tripped the loader's subprocess
+				// timeout, while creating the same 100k - no read involved - took
+				// about 38s.
 				results = docsToUpdate.publishOn(Schedulers
 						.newBoundedElastic(nThreads, 100, "catapult-update"))
-						.flatMap(key -> rcollection.upsert(key, getObject(key, docTemplate, elasticMap, collection),
-								upsertOptions().expiry(Duration.ofSeconds(ds.get_expiry()))))
+						.flatMap(key -> rcollection.get(key)
+								.map(getResult -> docTemplate.updateJsonObject(ds.faker,
+										getResult.contentAsObject(), ds.get_fieldsToUpdate()))
+								.doOnNext(obj -> elasticMap.put(key, obj.toString()))
+								.flatMap(obj -> rcollection.upsert(key, obj,
+										upsertOptions().expiry(Duration.ofSeconds(ds.get_expiry())))))
 						.log("", ds.getNewLogLevel())
 						.buffer(1000)
 						// Num retries
@@ -149,10 +160,4 @@ public class DocUpdate implements Callable<String> {
 		log.info("Completed update");
 	}
 
-	private JsonObject getObject(String key, DocTemplate docTemplate, Map<String, String> elasticMap, Collection collection) {
-		JsonObject obj = docTemplate.updateJsonObject(ds.faker, collection.get(key).contentAsObject(),
-				ds.get_fieldsToUpdate());
-		elasticMap.put(key, obj.toString());
-		return obj;
-	}
 }

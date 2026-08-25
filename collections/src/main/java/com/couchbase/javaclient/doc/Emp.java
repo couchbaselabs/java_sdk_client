@@ -85,6 +85,7 @@ public class Emp implements DocTemplate{
         jsonObject.put("languages_known", generateLangKnown());
         jsonObject.put("is_manager", isManager);
         jsonObject.put("mutated", 0);
+        jsonObject.put("location", generateLocation());
         jsonObject.put("type", "emp");
         jsonObject.put("ip", generateIP());
         if(IP_choice==0){
@@ -169,6 +170,24 @@ public class Emp implements DocTemplate{
 
     private int generateSalary(){
         return (random.nextInt(100000) + 50000);
+    }
+
+    /*
+     * The python JsonDocGenerator emits a 'location' geopoint on every emp doc,
+     * which the geo sorting/pagination tests index and sort on. This template did
+     * not, so a collection-container run (which loads through this client rather
+     * than the python generator) produced emp docs with no geo field at all -
+     * geo_distance sorts came back "NaN" for every document and search_after had
+     * nothing to page from. Uses its own Random so adding this field does not
+     * shift the sequence the other generators draw from.
+     */
+    private final Random locationRandom = new Random(0);
+
+    private JsonObject generateLocation(){
+        JsonObject location = JsonObject.create();
+        location.put("lat", Math.round(locationRandom.nextDouble() * 180_000_000 - 90_000_000) / 1_000_000.0);
+        location.put("lon", Math.round(locationRandom.nextDouble() * 360_000_000 - 180_000_000) / 1_000_000.0);
+        return location;
     }
 
     private String generateJoinDate(){
